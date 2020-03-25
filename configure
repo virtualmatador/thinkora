@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "thinkora configuring ..."
+
+packages=\
+"
+    libtesseract-dev
+"
+libs=\
+"
+"
+cd prerequisite/
+if ! ./configure.sh "${packages}" "${libs}"
+then
+    echo "thinkora configuration failed."
+    exit -1
+fi
+cd ../
+
+echo "thinkora configured."
