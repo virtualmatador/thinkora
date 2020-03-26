@@ -1,7 +1,12 @@
 #include <iostream>
 
-int main(int argc, const char* argv)
+#include <gtkmm.h>
+
+int main(int argc, char* argv[])
 {
-    std::cout << "Hello, World!" << std::endl;
-    return 0;
+    auto app = Gtk::Application::create("com.shaidin.thinkora");
+    Gtk::Window window;
+    window.set_title("Thinkora");
+    window.set_default_size(200, 200);
+    return app->run(window);
 }

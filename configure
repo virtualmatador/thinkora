@@ -4,6 +4,7 @@ echo "thinkora configuring ..."
 
 packages=\
 "
+    libgtkmm-3.0-dev
     libtesseract-dev
 "
 libs=\
