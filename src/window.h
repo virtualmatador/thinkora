@@ -1,3 +1,6 @@
+#ifndef WINDOW_H
+#define WINDOW_H
+
 #include <gtkmm.h>
 
 #include "board.h"
@@ -5,12 +8,14 @@
 
 class Window: public Gtk::Window
 {
+public:
+    Window();
+    ~Window();
+
 private:
     Gtk::Box box_;
     Bar bar_;
     Board board_;
-
-public:
-    Window();
-    ~Window();
 };
+
+#endif // WINDOW_H
