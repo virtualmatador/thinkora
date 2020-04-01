@@ -11,6 +11,7 @@ class Window: public Gtk::Window
 public:
     Window();
     ~Window();
+    bool on_delete(GdkEventAny* any_event);
 
 private:
     Gtk::Box box_;

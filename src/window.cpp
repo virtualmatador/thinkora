@@ -18,3 +18,12 @@ Window::Window()
 Window::~Window()
 {
 }
+
+bool Window::on_delete(GdkEventAny* any_event)
+{
+    if (board_.check_modified())
+    {
+        return true;
+    }
+    return false;
+}

@@ -8,3 +8,8 @@ void Circle::draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
         (points[1][0] - points[0][0]) / 2.0, 0, 2 * M_PI);
     cr->stroke();
 }
+
+Shape::Type Circle::get_type() const
+{
+    return Type::CIRCLE;
+}

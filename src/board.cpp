@@ -1,5 +1,6 @@
 #include <array>
 #include <cmath>
+#include <fstream>
 #include <set>
 
 #include "bar.h"
@@ -11,6 +12,7 @@
 Board::Board(Bar* bar)
     : zoom_{0}
     , center_{0, 0}
+    , modified_{false}
     , center_pre_pad_{0, 0}
     , mouse_position_{0, 0}
     , mouse_pre_pad_{0, 0}
@@ -29,6 +31,36 @@ Board::Board(Bar* bar)
 
 Board::~Board()
 {
+    clear_data();
+}
+
+bool Board::check_modified()
+{
+    if (modified_)
+    {
+        Gtk::MessageDialog error_message(*(Gtk::Window*)get_toplevel(),
+            "You have unsaved changes. Do you want to discard them?",
+            false, Gtk::MessageType::MESSAGE_WARNING,
+            Gtk::ButtonsType::BUTTONS_YES_NO, true);
+        if (error_message.run() == Gtk::ResponseType::RESPONSE_NO)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void Board::redraw(bool pass_on)
+{
+    if (pass_on)
+    {
+        bar_->redraw(false);
+    }
+    queue_draw();
+}
+
+void Board::clear_data()
+{
     for (auto& [zoom, plane]: references_)
     {
         for (auto& [position, shapes]: plane)
@@ -41,20 +73,12 @@ Board::~Board()
             }
         }
     }
-}
-
-void Board::redraw(bool pass_on)
-{
-    if (pass_on)
-    {
-        bar_->redraw(false);
-    }
-    queue_draw();
+    references_.clear();
 }
 
 void Board::add_reference(Shape* shape, const int& zoom)
 {
-    auto frame = shape->frame_;
+    auto frame = shape->get_frame();
     regionize(frame);
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
@@ -67,7 +91,7 @@ void Board::add_reference(Shape* shape, const int& zoom)
 
 void Board::remove_reference(Shape* shape, const int& zoom)
 {
-    auto frame = shape->frame_;
+    auto frame = shape->get_frame();
     regionize(frame);
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
@@ -160,9 +184,10 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
 ///////////////////////////////////////////////////////////////////////////////
         Circle* circle = new Circle({
             {mouse_position_[0] - 10, mouse_position_[1] - 10},
-            {mouse_position_[0] + 10, mouse_position_[1] + 10}});
-        circle->set_color({1.0, 0, 0, 1.0});
+            {mouse_position_[0] + 10, mouse_position_[1] + 10}},
+            {1.0, 0, 0, 1.0});
         add_reference(circle, zoom_);
+        modified_ = true;
         redraw(true);
 ///////////////////////////////////////////////////////////////////////////////
     }
@@ -226,7 +251,8 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
             {
                 zoom_lag_.pop();
             }
-            mouse_position_ = get_input_position(scroll_event->x, scroll_event->y);
+            mouse_position_ =
+                get_input_position(scroll_event->x, scroll_event->y);
             redraw(true);
         }
         break;
@@ -237,12 +263,128 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
         if (check_zoom(zoom, center))
         {
             zoom_lag_.push({mouse_position_[0] % 2, mouse_position_[1] % 2});
-            mouse_position_ = get_input_position(scroll_event->x, scroll_event->y);
+            mouse_position_ =
+                get_input_position(scroll_event->x, scroll_event->y);
             redraw(true);
         }
         break;
     }
 	return true;
+}
+
+std::string Board::choose_file(Gtk::FileChooserAction action) const
+{
+    Gtk::FileChooserDialog file_chooser(*(Gtk::Window*)get_toplevel(),
+        "Thinkora", action);
+    const char* select_button;
+    switch (action)
+    {
+    case Gtk::FileChooserAction::FILE_CHOOSER_ACTION_OPEN:
+        select_button = "Open";
+        break;
+    case Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SAVE:
+        select_button = "Save";
+        break;
+    }
+    file_chooser.add_button(select_button, Gtk::RESPONSE_OK);
+    file_chooser.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+    auto file_filter = Gtk::FileFilter::create();
+    file_filter->set_name("Thinkora files");
+    file_filter->add_pattern("*.thinkora");
+    file_chooser.add_filter(file_filter);
+    if (file_chooser.run() == Gtk::ResponseType::RESPONSE_OK)
+    {
+        return file_chooser.get_filename();
+    }
+    return "";
+}
+
+void Board::on_save() const
+{
+    auto file_name =
+        choose_file(Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SAVE);
+    if (!file_name.empty())
+    {
+        std::ofstream file(file_name);
+        if (file)
+        {
+            for (const auto [zoom, layer]: references_)
+            {
+                std::set<const Shape*> targets;
+                for (const auto [position, shapeset]: layer)
+                {
+                    for (const auto& shape: shapeset)
+                    {
+                        targets.insert(shape);
+                    }
+                }
+                if (!targets.empty())
+                {
+                    file << zoom << " " << targets.size() << std::endl;
+                    for (const auto& target: targets)
+                    {
+                        file << int(target->get_type()) << std::endl;
+                        file << *target << std::endl;
+                    }
+                    file << std::endl;
+                }
+            }
+            modified_ = false;
+        }
+        else
+        {
+            Gtk::MessageDialog error_message(*(Gtk::Window*)get_toplevel(),
+                "Failed to save file.", false, Gtk::MessageType::MESSAGE_ERROR,
+                Gtk::ButtonsType::BUTTONS_OK, true);
+            error_message.run();
+        }
+    }
+}
+
+void Board::on_open()
+{
+    if (check_modified())
+    {
+        return;
+    }
+    auto file_name =
+        choose_file(Gtk::FileChooserAction::FILE_CHOOSER_ACTION_OPEN);
+    if (!file_name.empty())
+    {
+        std::ifstream file(file_name);
+        if (file)
+        {
+            clear_data();
+            modified_ = false;
+            int zoom;
+            std::size_t size;
+            Shape::Type type;
+            Shape* shape;
+            while (file >> zoom >> size)
+            {
+                for (std::size_t i = 0; i < size; ++i)
+                {
+                    file >> (int&)(type);
+                    switch (type)
+                    {
+                    case Shape::Type::CIRCLE:
+                        shape = new Circle();
+                        break;
+                    }
+                    file >> *shape;
+                    add_reference(shape, zoom);
+                }
+            }
+            redraw(true);
+        }
+        else
+        {
+            Gtk::MessageDialog error_message(*(Gtk::Window*)get_toplevel(),
+                "Failed to open file.", false, Gtk::MessageType::MESSAGE_ERROR,
+                Gtk::ButtonsType::BUTTONS_OK, true);
+            error_message.run();
+        }
+    }
 }
 
 void Board::on_pad_origin()

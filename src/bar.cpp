@@ -12,10 +12,18 @@ Bar::Bar(Board* board)
     open_.set_label("Open");
     add(open_);
     open_.show();
+    open_.signal_clicked().connect([this]()
+    {
+        board_->on_open();
+    });
 
     save_.set_label("Save");
     add(save_);
     save_.show();
+    save_.signal_clicked().connect([this]()
+    {
+        board_->on_save();
+    });
 
     zero_.set_label("Origin");
     add(zero_);

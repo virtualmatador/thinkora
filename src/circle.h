@@ -9,8 +9,9 @@ public:
     using Shape::Shape;
 
 private:
-    virtual void draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
+    void draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
         const std::vector<std::array<int, 2>>& points) const override;
+    Type get_type() const override;
 };
 
 #endif // CIRCLE_H
