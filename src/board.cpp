@@ -2,17 +2,20 @@
 #include <cmath>
 #include <set>
 
+#include "bar.h"
 #include "circle.h"
 #include "toolbox.h"
 
 #include "board.h"
 
-Board::Board()
+Board::Board(Bar* bar)
     : zoom_{0}
     , center_{0, 0}
-    , mouse_center_{0, 0}
+    , center_pre_pad_{0, 0}
     , mouse_position_{0, 0}
+    , mouse_pre_pad_{0, 0}
     , mouse_button_{0}
+    , bar_{bar}
 {
     add_events(
         Gdk::EventMask::BUTTON_PRESS_MASK |
@@ -20,7 +23,8 @@ Board::Board()
         Gdk::EventMask::SCROLL_MASK |
         Gdk::EventMask::BUTTON1_MOTION_MASK |
         Gdk::EventMask::BUTTON2_MOTION_MASK |
-        Gdk::EventMask::BUTTON3_MOTION_MASK);
+        Gdk::EventMask::BUTTON3_MOTION_MASK |
+        Gdk::EventMask::POINTER_MOTION_MASK);
 }
 
 Board::~Board()
@@ -32,14 +36,23 @@ Board::~Board()
             while (!shapes.empty())
             {
                 auto shape = *shapes.begin();
-                remove_reference(shape);
+                remove_reference(shape, zoom);
                 delete shape;
             }
         }
     }
 }
 
-void Board::add_reference(Shape* shape)
+void Board::redraw(bool pass_on)
+{
+    if (pass_on)
+    {
+        bar_->redraw(false);
+    }
+    queue_draw();
+}
+
+void Board::add_reference(Shape* shape, const int& zoom)
 {
     auto frame = shape->frame_;
     regionize(frame);
@@ -47,12 +60,12 @@ void Board::add_reference(Shape* shape)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
         {
-            references_[zoom_][{x, y}].insert(shape);
+            references_[zoom][{x, y}].insert(shape);
         }
     }
 }
 
-void Board::remove_reference(Shape* shape)
+void Board::remove_reference(Shape* shape, const int& zoom)
 {
     auto frame = shape->frame_;
     regionize(frame);
@@ -60,7 +73,7 @@ void Board::remove_reference(Shape* shape)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
         {
-            references_[zoom_][{x, y}].erase(shape);
+            references_[zoom][{x, y}].erase(shape);
         }
     }
 }
@@ -117,24 +130,23 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 
 bool Board::on_button_press_event(GdkEventButton* button_event)
 {
-    const auto mouse = get_input_position(button_event->x, button_event->y);
     if (button_event->button == 1)
     {
         if (mouse_button_ == 0)
         {
             mouse_button_ = 1;
-            on_change_view();
+            redraw(true);
         }
     }
     else if (button_event->button == 2)
     {
         if (mouse_button_ == 0)
-    {
+        {
             mouse_button_ = 2;
-        mouse_center_ = center_;
-        mouse_position_ = {button_event->x, button_event->y};
-            on_change_view();
-    }
+            center_pre_pad_ = center_;
+            mouse_pre_pad_ = {int(button_event->x), int(button_event->y)};
+            redraw(true);
+        }
     }
     return true;
 }
@@ -143,20 +155,31 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
 {
     if (mouse_button_ == 1)
     {
+        mouse_position_ = get_input_position(motion_event->x, motion_event->y);
 // TODO change with skatch and run OCR
 ///////////////////////////////////////////////////////////////////////////////
-        const auto mouse = get_input_position(motion_event->x, motion_event->y);
-        Circle* circle = new Circle({{mouse[0] - 10, mouse[1] - 10}, {mouse[0] + 10, mouse[1] + 10}});
+        Circle* circle = new Circle({
+            {mouse_position_[0] - 10, mouse_position_[1] - 10},
+            {mouse_position_[0] + 10, mouse_position_[1] + 10}});
         circle->set_color({1.0, 0, 0, 1.0});
-        add_reference(circle);
-        on_change_view();
+        add_reference(circle, zoom_);
+        redraw(true);
 ///////////////////////////////////////////////////////////////////////////////
     }
     else if (mouse_button_ == 2)
     {
-        center_[0] = mouse_center_[0] + int(mouse_position_[0] - motion_event->x);
-        center_[1] = mouse_center_[1] + int(mouse_position_[1] - motion_event->y);
-        on_change_position();
+        center_[0] = center_pre_pad_[0] + mouse_pre_pad_[0] -
+            int(motion_event->x);
+        center_[1] = center_pre_pad_[1] + mouse_pre_pad_[1] -
+            int(motion_event->y);
+        clamp_position();
+        mouse_position_ = get_input_position(motion_event->x, motion_event->y);
+        redraw(true);
+    }
+    else
+    {
+        mouse_position_ = get_input_position(motion_event->x, motion_event->y);
+        bar_->redraw(false);
     }
     return true;
 }
@@ -168,15 +191,15 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         if (mouse_button_ == 1)
         {
             mouse_button_ = 0;
-            on_change_view();
+            redraw(true);
         }
     }
     else if (release_event->button == 2)
     {
         if (mouse_button_ == 2)
-    {
+        {
             mouse_button_ = 0;
-            on_change_view();
+            redraw(true);
         }
     }
     return true;
@@ -184,56 +207,62 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
 
 bool Board::on_scroll_event(GdkEventScroll* scroll_event)
 {
-    const auto mouse = get_input_position(scroll_event->x, scroll_event->y);
     int zoom;
     std::array<int, 2> center;
     switch (scroll_event->direction)
     {
     case GdkScrollDirection::GDK_SCROLL_UP:
         zoom = zoom_ + 1;
-        center[0] = center_[0] + mouse[0];
-        center[1] = center_[1] + mouse[1];
+        center[0] = center_[0] + mouse_position_[0];
+        center[1] = center_[1] + mouse_position_[1];
         if (!zoom_lag_.empty())
         {
             center[0] -= zoom_lag_.top()[0];
             center[1] -= zoom_lag_.top()[1];
         }
-        if (on_change_zoom(zoom, center))
+        if (check_zoom(zoom, center))
         {
             if (!zoom_lag_.empty())
             {
                 zoom_lag_.pop();
             }
+            mouse_position_ = get_input_position(scroll_event->x, scroll_event->y);
+            redraw(true);
         }
         break;
     case GdkScrollDirection::GDK_SCROLL_DOWN:
         zoom = zoom_ - 1;
-        center[0] = center_[0] - mouse[0] / 2;
-        center[1] = center_[1] - mouse[1] / 2;
-        if (on_change_zoom(zoom, center))
+        center[0] = center_[0] - mouse_position_[0] / 2;
+        center[1] = center_[1] - mouse_position_[1] / 2;
+        if (check_zoom(zoom, center))
         {
-            zoom_lag_.push({mouse[0] % 2, mouse[1] % 2});
+            zoom_lag_.push({mouse_position_[0] % 2, mouse_position_[1] % 2});
+            mouse_position_ = get_input_position(scroll_event->x, scroll_event->y);
+            redraw(true);
         }
         break;
     }
 	return true;
 }
 
-void Board::on_change_view()
+void Board::on_pad_origin()
 {
-    queue_draw();
+    mouse_position_[0] -= center_[0];
+    mouse_position_[1] -= center_[1];
+    center_[0] = 0;
+    center_[1] = 0;
+    redraw(true);
 }
 
-void Board::on_change_position()
+void Board::clamp_position()
 {
     center_[0] = std::max(center_[0], -position_limit_);
     center_[0] = std::min(center_[0], +position_limit_);
     center_[1] = std::max(center_[1], -position_limit_);
     center_[1] = std::min(center_[1], +position_limit_);
-    queue_draw();
 }
 
-bool Board::on_change_zoom(const int& zoom, const std::array<int, 2>& center)
+bool Board::check_zoom(const int& zoom, const std::array<int, 2>& center)
 {
     if (center[0] >= -position_limit_ && center[0] <= position_limit_ &&
         center[1] >= -position_limit_ && center[1] <= position_limit_ &&
@@ -241,7 +270,6 @@ bool Board::on_change_zoom(const int& zoom, const std::array<int, 2>& center)
     {
         zoom_ = zoom;
         center_ = center;
-        queue_draw();
         return true;
     }
     return false;

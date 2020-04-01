@@ -1,6 +1,8 @@
 #include "window.h"
 
 Window::Window()
+    : bar_{&board_}
+    , board_{&bar_}
 {
     fullscreen();
     add(box_);
@@ -10,6 +12,7 @@ Window::Window()
     box_.pack_start(board_);
     board_.show();
     box_.show();
+    bar_.redraw(true);
 }
 
 Window::~Window()
