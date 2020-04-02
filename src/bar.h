@@ -21,6 +21,7 @@ private:
     Gtk::Button open_;
     Gtk::Button save_;
     Gtk::Button zero_;
+    Gtk::ColorButton color_;
     Gtk::Label zoom_;
     Gtk::Label position_;
     Gtk::Label path_;

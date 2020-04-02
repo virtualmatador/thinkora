@@ -18,10 +18,9 @@ public:
 public:
     Shape();
     Shape(std::vector<std::array<int, 2>>&& points,
-        const std::array<double, 4>& color);
+        const Gdk::RGBA& color);
     virtual ~Shape();
     const std::array<std::array<int, 2>, 2>& get_frame() const;
-    void set_color(const std::array<double, 4>& color);
     void draw(const Cairo::RefPtr<Cairo::Context>& cr,
         const int& zoom_delta, const std::array<int, 2>& pad) const;
 
@@ -39,9 +38,9 @@ private:
     virtual void draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
         const std::vector<std::array<int, 2>>& points) const = 0;
 
-protected:
+private:
     std::vector<std::array<int, 2>> points_;
-    std::array<double, 4> color_;
+    Gdk::RGBA color_;
 
 private:
     std::array<std::array<int, 2>, 2> frame_;

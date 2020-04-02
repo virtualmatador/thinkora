@@ -39,10 +39,10 @@ bool Board::check_modified()
     if (modified_)
     {
         Gtk::MessageDialog error_message(*(Gtk::Window*)get_toplevel(),
-            "You have unsaved changes. Do you want to discard them?",
+            "You have unsaved changes. Do you want to save them?",
             false, Gtk::MessageType::MESSAGE_WARNING,
             Gtk::ButtonsType::BUTTONS_YES_NO, true);
-        if (error_message.run() == Gtk::ResponseType::RESPONSE_NO)
+        if (error_message.run() == Gtk::ResponseType::RESPONSE_YES)
         {
             return true;
         }
@@ -185,7 +185,7 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
         Circle* circle = new Circle({
             {mouse_position_[0] - 10, mouse_position_[1] - 10},
             {mouse_position_[0] + 10, mouse_position_[1] + 10}},
-            {1.0, 0, 0, 1.0});
+            bar_->color_.get_rgba());
         add_reference(circle, zoom_);
         modified_ = true;
         redraw(true);

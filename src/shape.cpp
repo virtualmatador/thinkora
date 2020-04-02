@@ -5,13 +5,13 @@
 #include "shape.h"
 
 Shape::Shape()
-    : color_{0.0, 0.0, 0.0, 0.0}
+    : color_{Gdk::RGBA("#000000")}
 {
     set_frame();
 }
 
 Shape::Shape(std::vector<std::array<int, 2>>&& points,
-    const std::array<double, 4>& color)
+    const Gdk::RGBA& color)
     : points_{std::move(points)}
     , color_{color}
 {
@@ -27,15 +27,13 @@ const std::array<std::array<int, 2>, 2>& Shape::get_frame() const
     return frame_;
 }
 
-void Shape::set_color(const std::array<double, 4>& color)
-{
-    color_ = color;
-}
-
 void Shape::draw(const Cairo::RefPtr<Cairo::Context>& cr,
     const int& zoom_delta, const std::array<int, 2>& pad) const
 {
+    cr->set_source_rgba(color_.get_red(), color_.get_green(),
+        color_.get_blue(), color_.get_alpha());
     draw_points(cr, transform(zoom_delta, pad));
+    cr->stroke();
 }
 
 void Shape::set_frame()
@@ -68,11 +66,11 @@ std::vector<std::array<int, 2>> Shape::transform(const int& zoom_delta,
 
 void Shape::write(std::ostream& os) const
 {
-    for (const auto& color: color_)
-    {
-        os << color << ' ';
-    }
-    os << std::endl;
+    os <<
+        color_.get_red() << ' ' <<
+        color_.get_green() << ' ' <<
+        color_.get_blue() << ' ' <<
+        color_.get_alpha() << std::endl;
     os << points_.size();
     for (const auto& point: points_)
     {
@@ -82,10 +80,15 @@ void Shape::write(std::ostream& os) const
 
 void Shape::read(std::istream& is)
 {
-    for (auto& color: color_)
-    {
+    double color;
+    is >> color;
+    color_.set_red(color);
+    is >> color;
+    color_.set_green(color);
+    is >> color;
+    color_.set_blue(color);
         is >> color;
-    }
+    color_.set_alpha(color);
     std::size_t size;
     is >> size;
     for (std::size_t i = 0; i < size; ++i)

@@ -33,6 +33,10 @@ Bar::Bar(Board* board)
         board_->on_pad_origin();
     });
 
+    color_.set_rgba(Gdk::RGBA("#FFFFFF"));
+    add(color_);
+    color_.show();
+
     zoom_.override_font(Pango::FontDescription("monospace"));
     add(zoom_);
     zoom_.show();
