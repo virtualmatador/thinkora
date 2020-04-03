@@ -56,11 +56,16 @@ private:
     Shape* shape_;
     Bar* bar_;
 
+public:
+    static std::vector<std::vector<std::vector<double>>> dashes_;
+    static tesseract::TessBaseAPI ocr_;
+
 private:
     static const int tile_size_ = 512;
     static const int zoom_limit_ = 64;
     static const int position_limit_ = 1000000000;
     static const int draw_level_limit_ = 6;
+    static const int width_limit_ = 4;
 
 private:
     friend class Bar;

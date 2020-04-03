@@ -3,9 +3,11 @@
 
 #include <array>
 #include <fstream>
+#include <string>
 #include <vector>
 
 #include <gtkmm.h>
+#include <tesseract/baseapi.h>
 
 class Shape
 {
@@ -15,13 +17,23 @@ public:
         LINE,
         CIRCLE,
     };
+    enum class Style
+    {
+        SOLID,
+        DASH_DASH,
+        DASH_DOT,
+        DOT_DOT,
+        SIZE
+    };
 
 public:
     Shape();
-    Shape(std::vector<std::array<int, 2>>&& points,
-        const Gdk::RGBA& color);
+    Shape(std::vector<std::array<int, 2>>&& points, const int& thickness,
+        const Gdk::RGBA& color, const Style& style);
     virtual ~Shape();
+    void set_label(const std::string& label);
     void add_point(const std::array<int, 2>& point);
+    void finalize();
     const std::array<std::array<int, 2>, 2>& get_frame() const;
     void draw(const Cairo::RefPtr<Cairo::Context>& cr,
         const int& zoom_delta, const std::array<int, 2>& pad) const;
@@ -40,11 +52,15 @@ private:
     virtual void draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
         const std::vector<std::array<int, 2>>& points) const = 0;
 
-private:
-    std::vector<std::array<int, 2>> points_;
-    Gdk::RGBA color_;
+public:
+    static void fill_dashes(const int& thickness_limit);
 
 private:
+    std::string label_;
+    std::vector<std::array<int, 2>> points_;
+    int thickness_;
+    Gdk::RGBA color_;
+    Style style_;
     std::array<std::array<int, 2>, 2> frame_;
 
 private:

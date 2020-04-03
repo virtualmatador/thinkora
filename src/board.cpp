@@ -10,6 +10,9 @@
 
 #include "board.h"
 
+std::vector<std::vector<std::vector<double>>> Board::dashes_;
+tesseract::TessBaseAPI Board::ocr_;
+
 Board::Board(Bar* bar)
     : zoom_{0}
     , center_{0, 0}
@@ -30,6 +33,20 @@ Board::Board(Bar* bar)
         Gdk::EventMask::BUTTON3_MOTION_MASK |
         Gdk::EventMask::POINTER_MOTION_MASK |
         Gdk::EventMask::ENTER_NOTIFY_MASK);
+    for (std::size_t i = 1; i <= width_limit_; ++i)
+    {
+        dashes_.emplace_back(std::vector<std::vector<double>>(
+        {
+            {},
+            {4.0 * i, 4.0 * i},
+            {4.0 * i, 4.0 * i, 1.0 * i, 4.0 * i},
+            {1.0 * i, 4.0 * i},
+        }));
+    }
+    if (ocr_.Init(nullptr, "eng"))
+    {
+        throw std::runtime_error("ocr init");
+    }
 }
 
 Board::~Board()
@@ -39,6 +56,7 @@ Board::~Board()
     {
         delete shape_;
     }
+    ocr_.End();
 }
 
 bool Board::check_modified()
@@ -170,7 +188,8 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
         if (button_event->button == 1)
         {
             mouse_button_ = 1;
-            shape_ = new Line{{mouse_position_}, bar_->color_.get_rgba()};
+            shape_ = new Line{{mouse_position_}, bar_->marker_width_,
+                bar_->marker_color_, bar_->marker_style_};
             redraw(true);
         }
         else if (button_event->button == 2)
@@ -218,6 +237,7 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         if (mouse_button_ == 1)
         {
             mouse_button_ = 0;
+            shape_->finalize();
             add_reference(shape_, zoom_);
             shape_ = nullptr;
             modified_ = true;
@@ -338,13 +358,12 @@ void Board::on_save() const
                 }
                 if (!targets.empty())
                 {
-                    file << zoom << " " << targets.size() << std::endl;
+                    file << zoom << " " << targets.size() << std::endl << std::endl;
                     for (const auto& target: targets)
                     {
                         file << int(target->get_type()) << std::endl;
                         file << *target << std::endl;
                     }
-                    file << std::endl;
                 }
             }
             modified_ = false;

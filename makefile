@@ -2,8 +2,8 @@ TARGET := thinkora
 DEBUG := $(if $(shell git symbolic-ref --short HEAD | grep master), , -g)
 SOURCES := $(wildcard src/*.cpp)
 OBJECTS := $(patsubst src/%.cpp, build/%.o, $(SOURCES))
-LDLIBS := -lstdc++ $(shell pkg-config --libs gtkmm-3.0)
-CFLAGS := -std=c++17 $(shell pkg-config --cflags gtkmm-3.0)
+LDLIBS := -lstdc++ $(shell pkg-config --libs gtkmm-3.0) $(shell pkg-config --libs tesseract --static)
+CFLAGS := -std=c++17 $(shell pkg-config --cflags gtkmm-3.0 tesseract)
 
 .PHONY: clean, install, uninstall
 

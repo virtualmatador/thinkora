@@ -6,6 +6,11 @@ packages=\
 "
     libgtkmm-3.0-dev
     libtesseract-dev
+    libjpeg-dev
+    libgif-dev
+    libtiff-dev
+    libwebp-dev
+    libopenjp2-7-dev
 "
 libs=\
 "
@@ -17,5 +22,12 @@ then
     exit -1
 fi
 cd ../
+
+pushd /usr/share/tesseract-ocr/4.00/tessdata
+if ! test -f eng.traineddata
+then
+    sudo wget https://raw.githubusercontent.com/tesseract-ocr/tessdata/master/eng.traineddata
+fi
+popd
 
 echo "thinkora configured."
