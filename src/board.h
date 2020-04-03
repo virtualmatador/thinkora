@@ -26,6 +26,7 @@ private:
     bool on_motion_notify_event(GdkEventMotion* motion_event) override;
     bool on_button_release_event(GdkEventButton* release_event) override;
     bool on_scroll_event(GdkEventScroll *scroll_event) override;
+    bool on_enter_notify_event(GdkEventCrossing* crossing_event) override;
     void on_save() const;
     void on_open();
     void on_pad_origin();
@@ -52,13 +53,14 @@ private:
     std::array<int, 2> mouse_pre_pad_;
     std::stack<std::array<int, 2>> zoom_lag_;
     int mouse_button_;
+    Shape* shape_;
     Bar* bar_;
 
 private:
     static const int tile_size_ = 512;
     static const int zoom_limit_ = 64;
     static const int position_limit_ = 1000000000;
-    static const int draw_level_limit_ = 5;
+    static const int draw_level_limit_ = 6;
 
 private:
     friend class Bar;

@@ -22,6 +22,12 @@ Shape::~Shape()
 {
 }
 
+void Shape::add_point(const std::array<int, 2>& point)
+{
+    points_.emplace_back(point);
+    set_frame();
+}
+
 const std::array<std::array<int, 2>, 2>& Shape::get_frame() const
 {
     return frame_;

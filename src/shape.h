@@ -12,6 +12,7 @@ class Shape
 public:
     enum class Type
     {
+        LINE,
         CIRCLE,
     };
 
@@ -20,6 +21,7 @@ public:
     Shape(std::vector<std::array<int, 2>>&& points,
         const Gdk::RGBA& color);
     virtual ~Shape();
+    void add_point(const std::array<int, 2>& point);
     const std::array<std::array<int, 2>, 2>& get_frame() const;
     void draw(const Cairo::RefPtr<Cairo::Context>& cr,
         const int& zoom_delta, const std::array<int, 2>& pad) const;

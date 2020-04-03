@@ -5,6 +5,7 @@
 
 #include "bar.h"
 #include "circle.h"
+#include "line.h"
 #include "toolbox.h"
 
 #include "board.h"
@@ -17,6 +18,7 @@ Board::Board(Bar* bar)
     , mouse_position_{0, 0}
     , mouse_pre_pad_{0, 0}
     , mouse_button_{0}
+    , shape_{nullptr}
     , bar_{bar}
 {
     add_events(
@@ -26,12 +28,17 @@ Board::Board(Bar* bar)
         Gdk::EventMask::BUTTON1_MOTION_MASK |
         Gdk::EventMask::BUTTON2_MOTION_MASK |
         Gdk::EventMask::BUTTON3_MOTION_MASK |
-        Gdk::EventMask::POINTER_MOTION_MASK);
+        Gdk::EventMask::POINTER_MOTION_MASK |
+        Gdk::EventMask::ENTER_NOTIFY_MASK);
 }
 
 Board::~Board()
 {
     clear_data();
+    if (shape_)
+    {
+        delete shape_;
+    }
 }
 
 bool Board::check_modified()
@@ -149,30 +156,33 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
             }
         }
     }
+    if (shape_)
+    {
+        shape_->draw(cr, 0, area[0]);
+    }
     return true;
 }
 
 bool Board::on_button_press_event(GdkEventButton* button_event)
 {
-    if (button_event->button == 1)
+    if (mouse_button_ == 0)
     {
-        if (mouse_button_ == 0)
+        if (button_event->button == 1)
         {
             mouse_button_ = 1;
+            shape_ = new Line{{mouse_position_}, bar_->color_.get_rgba()};
             redraw(true);
         }
-    }
-    else if (button_event->button == 2)
-    {
-        if (mouse_button_ == 0)
+        else if (button_event->button == 2)
         {
             mouse_button_ = 2;
             center_pre_pad_ = center_;
             mouse_pre_pad_ = {int(button_event->x), int(button_event->y)};
             redraw(true);
         }
+        return true;
     }
-    return true;
+    return false;
 }
 
 bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
@@ -180,16 +190,8 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
     if (mouse_button_ == 1)
     {
         mouse_position_ = get_input_position(motion_event->x, motion_event->y);
-// TODO change with skatch and run OCR
-///////////////////////////////////////////////////////////////////////////////
-        Circle* circle = new Circle({
-            {mouse_position_[0] - 10, mouse_position_[1] - 10},
-            {mouse_position_[0] + 10, mouse_position_[1] + 10}},
-            bar_->color_.get_rgba());
-        add_reference(circle, zoom_);
-        modified_ = true;
+        shape_->add_point(mouse_position_);
         redraw(true);
-///////////////////////////////////////////////////////////////////////////////
     }
     else if (mouse_button_ == 2)
     {
@@ -216,6 +218,9 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         if (mouse_button_ == 1)
         {
             mouse_button_ = 0;
+            add_reference(shape_, zoom_);
+            shape_ = nullptr;
+            modified_ = true;
             redraw(true);
         }
     }
@@ -232,44 +237,57 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
 
 bool Board::on_scroll_event(GdkEventScroll* scroll_event)
 {
-    int zoom;
-    std::array<int, 2> center;
-    switch (scroll_event->direction)
+    if (mouse_button_ == 0)
     {
-    case GdkScrollDirection::GDK_SCROLL_UP:
-        zoom = zoom_ + 1;
-        center[0] = center_[0] + mouse_position_[0];
-        center[1] = center_[1] + mouse_position_[1];
-        if (!zoom_lag_.empty())
+        int zoom;
+        std::array<int, 2> center;
+        switch (scroll_event->direction)
         {
-            center[0] -= zoom_lag_.top()[0];
-            center[1] -= zoom_lag_.top()[1];
-        }
-        if (check_zoom(zoom, center))
-        {
+        case GdkScrollDirection::GDK_SCROLL_UP:
+            zoom = zoom_ + 1;
+            center[0] = center_[0] + mouse_position_[0];
+            center[1] = center_[1] + mouse_position_[1];
             if (!zoom_lag_.empty())
             {
-                zoom_lag_.pop();
+                center[0] -= zoom_lag_.top()[0];
+                center[1] -= zoom_lag_.top()[1];
             }
-            mouse_position_ =
-                get_input_position(scroll_event->x, scroll_event->y);
-            redraw(true);
+            if (check_zoom(zoom, center))
+            {
+                if (!zoom_lag_.empty())
+                {
+                    zoom_lag_.pop();
+                }
+                mouse_position_ =
+                    get_input_position(scroll_event->x, scroll_event->y);
+                redraw(true);
+                return true;
+            }
+            break;
+        case GdkScrollDirection::GDK_SCROLL_DOWN:
+            zoom = zoom_ - 1;
+            center[0] = center_[0] - mouse_position_[0] / 2;
+            center[1] = center_[1] - mouse_position_[1] / 2;
+            if (check_zoom(zoom, center))
+            {
+                zoom_lag_.push({mouse_position_[0] % 2,
+                    mouse_position_[1] % 2});
+                mouse_position_ =
+                    get_input_position(scroll_event->x, scroll_event->y);
+                redraw(true);
+                return true;
+            }
+            break;
         }
-        break;
-    case GdkScrollDirection::GDK_SCROLL_DOWN:
-        zoom = zoom_ - 1;
-        center[0] = center_[0] - mouse_position_[0] / 2;
-        center[1] = center_[1] - mouse_position_[1] / 2;
-        if (check_zoom(zoom, center))
-        {
-            zoom_lag_.push({mouse_position_[0] % 2, mouse_position_[1] % 2});
-            mouse_position_ =
-                get_input_position(scroll_event->x, scroll_event->y);
-            redraw(true);
-        }
-        break;
     }
-	return true;
+	return false;
+}
+
+bool Board::on_enter_notify_event(GdkEventCrossing* crossing_event)
+{
+    mouse_position_ = get_input_position(crossing_event->x, crossing_event->y);
+    bar_->redraw(false);
+    return true;
 }
 
 std::string Board::choose_file(Gtk::FileChooserAction action) const
@@ -367,8 +385,14 @@ void Board::on_open()
                     file >> (int&)(type);
                     switch (type)
                     {
+                    case Shape::Type::LINE:
+                        shape = new Line();
+                        break;
                     case Shape::Type::CIRCLE:
                         shape = new Circle();
+                        break;
+                    default:
+                        file.setstate(std::ios_base::badbit);
                         break;
                     }
                     file >> *shape;

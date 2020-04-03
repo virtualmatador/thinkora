@@ -34,8 +34,15 @@ Bar::Bar(Board* board)
     });
 
     color_.set_rgba(Gdk::RGBA("#FFFFFF"));
+    color_.set_title("Marker");
     add(color_);
     color_.show();
+
+    thickness_.set_range(1, 4);
+    thickness_.set_digits(0);
+    thickness_.set_size_request(100);
+    add(thickness_);
+    thickness_.show();
 
     zoom_.override_font(Pango::FontDescription("monospace"));
     add(zoom_);

@@ -22,6 +22,7 @@ private:
     Gtk::Button save_;
     Gtk::Button zero_;
     Gtk::ColorButton color_;
+    Gtk::Scale thickness_;
     Gtk::Label zoom_;
     Gtk::Label position_;
     Gtk::Label path_;
