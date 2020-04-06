@@ -21,7 +21,7 @@ Board::Board(Bar* bar)
     , mouse_position_{0, 0}
     , mouse_pre_pad_{0, 0}
     , mouse_button_{0}
-    , shape_{nullptr}
+    , drawing_{nullptr}
     , bar_{bar}
 {
     add_events(
@@ -52,10 +52,6 @@ Board::Board(Bar* bar)
 Board::~Board()
 {
     clear_data();
-    if (shape_)
-    {
-        delete shape_;
-    }
     ocr_.End();
 }
 
@@ -99,6 +95,8 @@ void Board::clear_data()
         }
     }
     references_.clear();
+    drawings_.clear();
+    delete drawing_;
 }
 
 void Board::add_reference(Shape* shape, const int& zoom)
@@ -174,9 +172,9 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
             }
         }
     }
-    if (shape_)
+    if (drawing_)
     {
-        shape_->draw(cr, 0, area[0]);
+        drawing_->draw(cr, 0, area[0]);
     }
     return true;
 }
@@ -188,7 +186,7 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
         if (button_event->button == 1)
         {
             mouse_button_ = 1;
-            shape_ = new Line{{mouse_position_}, bar_->marker_width_,
+            drawing_ = new Line{{mouse_position_}, bar_->marker_width_,
                 bar_->marker_color_, bar_->marker_style_};
             redraw(true);
         }
@@ -209,7 +207,7 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
     if (mouse_button_ == 1)
     {
         mouse_position_ = get_input_position(motion_event->x, motion_event->y);
-        shape_->add_point(mouse_position_);
+        drawing_->add_point(mouse_position_);
         redraw(true);
     }
     else if (mouse_button_ == 2)
@@ -237,9 +235,10 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         if (mouse_button_ == 1)
         {
             mouse_button_ = 0;
-            shape_->finalize();
-            add_reference(shape_, zoom_);
-            shape_ = nullptr;
+            drawing_->set_frame();
+            add_reference(drawing_, zoom_);
+            drawings_.emplace_back(drawing_, zoom_, 0);
+            drawing_ = nullptr;
             modified_ = true;
             redraw(true);
         }
@@ -478,4 +477,20 @@ void Board::regionize(std::array<std::array<int, 2>, 2>& frame)
     divide(frame[0][1]);
     divide(frame[1][0]);
     divide(frame[1][1]);
+}
+
+void Shape::process()
+{
+    auto bitmap = Cairo::ImageSurface::create(Cairo::Format::FORMAT_A8,
+        frame_[1][0] - frame_[0][0] + 10, frame_[1][1] - frame_[0][1] + 10);
+    auto cr = Cairo::Context::create(bitmap);
+    cr->set_source_rgba(1.0, 1.0, 1.0, 1.0);
+    draw_points(cr, transform(0, {frame_[0][0] + 5, frame_[0][1] + 5}));
+    cr->stroke();
+    Board::ocr_.SetImage(bitmap->get_data(), bitmap->get_width(),
+        bitmap->get_height(), 1, bitmap->get_width());
+    auto outText = Board::ocr_.GetUTF8Text();
+    label_ = "TXT: ";
+    label_ += outText;
+    delete[] outText;
 }

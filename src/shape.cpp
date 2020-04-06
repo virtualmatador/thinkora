@@ -7,9 +7,10 @@
 #include "shape.h"
 
 Shape::Shape()
-    : thickness_{1}
+    : line_width_{1}
     , color_{Gdk::RGBA("#000000")}
     , style_{Style::SOLID}
+    , processed_{false}
 {
     set_frame();
 }
@@ -17,57 +18,12 @@ Shape::Shape()
 Shape::Shape(std::vector<std::array<int, 2>>&& points, const int& thickness,
     const Gdk::RGBA& color, const Style& style)
     : points_{std::move(points)}
-    , thickness_{thickness}
+    , line_width_{thickness}
     , color_{color}
     , style_{style}
+    , processed_{false}
 {
     set_frame();
-}
-
-Shape::~Shape()
-{
-}
-
-void Shape::set_label(const std::string& label)
-{
-    label_ = label;
-}
-
-void Shape::add_point(const std::array<int, 2>& point)
-{
-    points_.emplace_back(point);
-}
-
-void Shape::finalize()
-{
-    set_frame();
-    Cairo::ImageSurface bitmap();
-    /*
-    bitmap.
-
-    Pix *image = pixRead("/usr/src/tesseract/testing/phototest.tif");
-    Board::ocr_.SetImage(image);
-    auto outText = Board::ocr_.GetUTF8Text();
-    label_ = outText;
-    delete[] outText;
-    pixDestroy(&image);
-    */
-}
-
-const std::array<std::array<int, 2>, 2>& Shape::get_frame() const
-{
-    return frame_;
-}
-
-void Shape::draw(const Cairo::RefPtr<Cairo::Context>& cr,
-    const int& zoom_delta, const std::array<int, 2>& pad) const
-{
-    cr->set_source_rgba(color_.get_red(), color_.get_green(),
-        color_.get_blue(), color_.get_alpha());
-    cr->set_line_width(thickness_);
-    cr->set_dash(Board::dashes_[thickness_ - 1][int(style_)], 0.0);
-    draw_points(cr, transform(zoom_delta, pad));
-    cr->stroke();
 }
 
 void Shape::set_frame()
@@ -83,6 +39,30 @@ void Shape::set_frame()
         frame_[1][0] = std::max(frame_[1][0], point[0]);
         frame_[1][1] = std::max(frame_[1][1], point[1]);
     }
+}
+
+const std::array<std::array<int, 2>, 2>& Shape::get_frame() const
+{
+    return frame_;
+}
+
+void Shape::draw(const Cairo::RefPtr<Cairo::Context>& cr,
+    const int& zoom_delta, const std::array<int, 2>& pad) const
+{
+    cr->set_source_rgba(color_.get_red(), color_.get_green(),
+        color_.get_blue(), color_.get_alpha());
+    cr->set_line_width(line_width_);
+    cr->set_dash(Board::dashes_[line_width_ - 1][int(style_)], 0.0);
+    auto frame = draw_points(cr, transform(zoom_delta, pad));
+    if (!label_.empty())
+    {
+        cr->move_to((frame[0][0] + frame[1][0]) / 2, (frame[0][1] + frame[1][1]) / 2);
+        cr->set_font_size(20.0);
+        cr->set_font_face(Cairo::ToyFontFace::create("monospace",
+            Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_BOLD));
+        cr->show_text(label_);
+    }
+    cr->stroke();
 }
 
 std::vector<std::array<int, 2>> Shape::transform(const int& zoom_delta,
@@ -108,7 +88,7 @@ void Shape::write(std::ostream& os) const
     {
         os << point[0] << ' ' << point[1] << std::endl;
     }
-    os << thickness_ << std::endl;
+    os << line_width_ << std::endl;
     os <<
         color_.get_red() << ' ' <<
         color_.get_green() << ' ' <<
@@ -131,7 +111,7 @@ void Shape::read(std::istream& is)
         points_.push_back({x, y});
     }
     set_frame();
-    is >> thickness_ ;
+    is >> line_width_ ;
     double color;
     is >> color;
     color_.set_red(color);

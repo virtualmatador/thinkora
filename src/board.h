@@ -3,11 +3,14 @@
 
 #include <array>
 #include <map>
+#include <list>
 #include <set>
 #include <stack>
 
 #include <gtkmm.h>
 
+#include "drawing.h"
+#include "line.h"
 #include "shape.h"
 
 class Bar;
@@ -53,7 +56,8 @@ private:
     std::array<int, 2> mouse_pre_pad_;
     std::stack<std::array<int, 2>> zoom_lag_;
     int mouse_button_;
-    Shape* shape_;
+    Line* drawing_;
+    std::list<Drawing> drawings_;
     Bar* bar_;
 
 public:

@@ -30,16 +30,13 @@ public:
     Shape();
     Shape(std::vector<std::array<int, 2>>&& points, const int& thickness,
         const Gdk::RGBA& color, const Style& style);
-    virtual ~Shape();
-    void set_label(const std::string& label);
-    void add_point(const std::array<int, 2>& point);
-    void finalize();
+    void set_frame();
+    void process();
     const std::array<std::array<int, 2>, 2>& get_frame() const;
     void draw(const Cairo::RefPtr<Cairo::Context>& cr,
         const int& zoom_delta, const std::array<int, 2>& pad) const;
 
 private:
-    void set_frame();
     std::vector<std::array<int, 2>> transform(const int& zoom_delta,
         const std::array<int, 2>& pad) const;
     void write(std::ostream& os) const;
@@ -49,19 +46,23 @@ public:
     virtual Type get_type() const = 0;
 
 private:
-    virtual void draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
+    virtual std::array<std::array<int, 2>, 2> draw_points(
+        const Cairo::RefPtr<Cairo::Context>& cr,
         const std::vector<std::array<int, 2>>& points) const = 0;
 
 public:
     static void fill_dashes(const int& thickness_limit);
 
+protected:
+    std::vector<std::array<int, 2>> points_;
+
 private:
     std::string label_;
-    std::vector<std::array<int, 2>> points_;
-    int thickness_;
+    int line_width_;
     Gdk::RGBA color_;
     Style style_;
     std::array<std::array<int, 2>, 2> frame_;
+    bool processed_;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, const Shape& shape);

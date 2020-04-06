@@ -1,6 +1,11 @@
 #include "line.h"
 
-void Line::draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
+void Line::add_point(const std::array<int, 2>& point)
+{
+    points_.emplace_back(point);
+}
+
+std::array<std::array<int, 2>, 2> Line::draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
     const std::vector<std::array<int, 2>>& points) const
 {
     if (points.size() == 1)
@@ -12,6 +17,8 @@ void Line::draw_points(const Cairo::RefPtr<Cairo::Context>& cr,
     {
         cr->line_to(points[i][0], points[i][1]);
     }
+    cr->stroke();
+    return {points[0], points[1]};
 }
 
 Shape::Type Line::get_type() const
