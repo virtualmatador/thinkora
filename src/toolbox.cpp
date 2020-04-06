@@ -19,3 +19,12 @@ std::array<int, 2> zoom(const std::array<int, 2>& point, const int& zoom_delta)
     }
     return dest;
 }
+
+std::array<int, 2> transform(const std::array<int, 2>& point,
+    const int& zoom_delta, const std::array<int, 2>& pad)
+{
+    std::array<int, 2> transformed = zoom(point, zoom_delta);
+        transformed[0] -= pad[0];
+        transformed[1] -= pad[1];
+    return transformed;
+}

@@ -1,15 +1,16 @@
-#ifndef CIRCLE_H
-#define CIRCLE_H
+#ifndef SKETCH_H
+#define SKETCH_H
 
 #include <array>
+#include <vector>
 
 #include "shape.h"
 
-class Circle final: public Shape
+class Sketch final: public Shape
 {
 public:
     using Shape::Shape;
-    void set_circle(const std::array<int, 2>& center, const int& radius);
+    void add_point(const std::array<int, 2>& point);
 
 public:
     Type get_type() const override;
@@ -22,7 +23,7 @@ private:
     void read_details(std::istream& is);
 
 private:
-    std::array<std::array<int, 2>, 2> circle_;
+    std::vector<std::array<int, 2>> points_;
 };
 
-#endif // CIRCLE_H
+#endif // SKETCH_H

@@ -2,16 +2,17 @@
 #define BOARD_H
 
 #include <array>
+#include <cstddef>
 #include <map>
+#include <mutex>
 #include <list>
 #include <set>
 #include <stack>
 
 #include <gtkmm.h>
 
-#include "drawing.h"
-#include "line.h"
-#include "shape.h"
+#include "pad.h"
+#include "sketch.h"
 
 class Bar;
 
@@ -36,8 +37,9 @@ private:
 
 private:
     void clear_data();
+    bool delete_shape(Shape* shape, const int& zoom);
     void add_reference(Shape* shape, const int& zoom);
-    void remove_reference(Shape* shape, const int& zoom);
+    std::size_t remove_reference(Shape* shape, const int& zoom);
     void clamp_position();
     bool check_zoom(const int& zoom, const std::array<int, 2>& center);
     std::string choose_file(Gtk::FileChooserAction action) const;
@@ -56,8 +58,9 @@ private:
     std::array<int, 2> mouse_pre_pad_;
     std::stack<std::array<int, 2>> zoom_lag_;
     int mouse_button_;
-    Line* drawing_;
-    std::list<Drawing> drawings_;
+    Sketch* sketch_;
+    Pad pad_;
+    mutable std::mutex lock_shapes_;
     Bar* bar_;
 
 public:

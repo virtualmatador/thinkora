@@ -4,7 +4,6 @@
 #include <string>
 
 #include "board.h"
-#include "line.h"
 
 #include "bar.h"
 
@@ -287,11 +286,11 @@ void Bar::draw_line(const Cairo::RefPtr<Cairo::Context>& cr,
     cr->set_source_rgba(0.0, 0.0, 0.0, 1.0);
     cr->rectangle(frame[0][0], frame[0][1], frame[1][0], frame[1][1]);
     cr->stroke();
-    Line line({{int(frame[0][0] + frame[1][0]) / -2 + 5, 0},
-        {int(frame[0][0] + frame[1][0]) / 2 - 5, 0}}, width,
-        Gdk::RGBA("#000000"), style);
-    line.draw(cr, 0, {int(frame[0][0] + frame[1][0]) / -2,
-        int(frame[0][1] + frame[1][1]) / -2});
+    cr->set_line_width(width);
+    cr->set_dash(Board::dashes_[width - 1][int(style)], 0.0);
+    cr->move_to(frame[0][0] + 5.0, (frame[0][1] + frame[1][1]) / 2.0);
+    cr->line_to(frame[1][0] - 5.0, (frame[0][1] + frame[1][1]) / 2.0);
+    cr->stroke();
 }
 
 void Bar::set_zoom()

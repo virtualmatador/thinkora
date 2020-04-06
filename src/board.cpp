@@ -5,7 +5,6 @@
 
 #include "bar.h"
 #include "circle.h"
-#include "line.h"
 #include "toolbox.h"
 
 #include "board.h"
@@ -21,7 +20,7 @@ Board::Board(Bar* bar)
     , mouse_position_{0, 0}
     , mouse_pre_pad_{0, 0}
     , mouse_button_{0}
-    , drawing_{nullptr}
+    , sketch_{nullptr}
     , bar_{bar}
 {
     add_events(
@@ -82,6 +81,7 @@ void Board::redraw(bool pass_on)
 
 void Board::clear_data()
 {
+    std::lock_guard<std::mutex> lock{lock_shapes_};
     for (auto& [zoom, plane]: references_)
     {
         for (auto& [position, shapes]: plane)
@@ -95,12 +95,24 @@ void Board::clear_data()
         }
     }
     references_.clear();
-    drawings_.clear();
-    delete drawing_;
+    pad_.clear();
+    delete sketch_;
+}
+
+bool Board::delete_shape(Shape* shape, const int& zoom)
+{
+    std::lock_guard<std::mutex> lock{lock_shapes_};
+    if (remove_reference(shape, zoom) > 0)
+    {
+        delete shape;
+        return true;
+    }
+    return false;
 }
 
 void Board::add_reference(Shape* shape, const int& zoom)
 {
+    std::lock_guard<std::mutex> lock{lock_shapes_};
     auto frame = shape->get_frame();
     regionize(frame);
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
@@ -112,17 +124,19 @@ void Board::add_reference(Shape* shape, const int& zoom)
     }
 }
 
-void Board::remove_reference(Shape* shape, const int& zoom)
+std::size_t Board::remove_reference(Shape* shape, const int& zoom)
 {
     auto frame = shape->get_frame();
     regionize(frame);
+    std::size_t erased = 0;
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
         {
-            references_[zoom][{x, y}].erase(shape);
+            erased += references_[zoom][{x, y}].erase(shape);
         }
     }
+    return erased;
 }
 
 bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
@@ -141,40 +155,43 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
             center_[1] + allocation.get_height() / 2,
         }
     }};
-    for (int zoom_delta = draw_level_limit_; zoom_delta >= -draw_level_limit_;
-        --zoom_delta)
     {
-        auto layer = references_.find(zoom_ - zoom_delta);
-        if (layer != references_.end())
+        std::lock_guard<std::mutex> lock{lock_shapes_};
+        for (int zoom_delta = draw_level_limit_; zoom_delta >= -draw_level_limit_;
+            --zoom_delta)
         {
-            std::set<const Shape*> targets;
-            std::array<std::array<int, 2>, 2> view;
-            view[0] = zoom(area[0], -zoom_delta);
-            view[1] = zoom(area[1], -zoom_delta);
-            regionize(view);
-            for (auto x = view[0][0]; x <= view[1][0]; ++x)
+            auto layer = references_.find(zoom_ - zoom_delta);
+            if (layer != references_.end())
             {
-                for (auto y = view[0][1]; y <= view[1][1]; ++y)
+                std::set<const Shape*> targets;
+                std::array<std::array<int, 2>, 2> view;
+                view[0] = zoom(area[0], -zoom_delta);
+                view[1] = zoom(area[1], -zoom_delta);
+                regionize(view);
+                for (auto x = view[0][0]; x <= view[1][0]; ++x)
                 {
-                    auto shapeset = layer->second.find({x, y});
-                    if (shapeset != layer->second.end())
+                    for (auto y = view[0][1]; y <= view[1][1]; ++y)
                     {
-                        for (const auto& shape: shapeset->second)
+                        auto shapeset = layer->second.find({x, y});
+                        if (shapeset != layer->second.end())
                         {
-                            targets.insert(shape);
+                            for (const auto& shape: shapeset->second)
+                            {
+                                targets.insert(shape);
+                            }
                         }
                     }
                 }
-            }
-            for (const auto& target: targets)
-            {
-                target->draw(cr, zoom_delta, area[0]);
+                for (const auto& target: targets)
+                {
+                    target->draw(cr, zoom_delta, area[0]);
+                }
             }
         }
     }
-    if (drawing_)
+    if (sketch_)
     {
-        drawing_->draw(cr, 0, area[0]);
+        sketch_->draw(cr, 0, area[0]);
     }
     return true;
 }
@@ -186,8 +203,9 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
         if (button_event->button == 1)
         {
             mouse_button_ = 1;
-            drawing_ = new Line{{mouse_position_}, bar_->marker_width_,
+            sketch_ = new Sketch{bar_->marker_width_,
                 bar_->marker_color_, bar_->marker_style_};
+            sketch_->add_point(mouse_position_);
             redraw(true);
         }
         else if (button_event->button == 2)
@@ -207,7 +225,7 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
     if (mouse_button_ == 1)
     {
         mouse_position_ = get_input_position(motion_event->x, motion_event->y);
-        drawing_->add_point(mouse_position_);
+        sketch_->add_point(mouse_position_);
         redraw(true);
     }
     else if (mouse_button_ == 2)
@@ -235,10 +253,10 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         if (mouse_button_ == 1)
         {
             mouse_button_ = 0;
-            drawing_->set_frame();
-            add_reference(drawing_, zoom_);
-            drawings_.emplace_back(drawing_, zoom_, 0);
-            drawing_ = nullptr;
+            sketch_->set_frame();
+            add_reference(sketch_, zoom_);
+            pad_.push({sketch_, zoom_});
+            sketch_ = nullptr;
             modified_ = true;
             redraw(true);
         }
@@ -345,6 +363,7 @@ void Board::on_save() const
         std::ofstream file(file_name);
         if (file)
         {
+            std::lock_guard<std::mutex> lock{lock_shapes_};
             for (const auto [zoom, layer]: references_)
             {
                 std::set<const Shape*> targets;
@@ -403,11 +422,11 @@ void Board::on_open()
                     file >> (int&)(type);
                     switch (type)
                     {
-                    case Shape::Type::LINE:
-                        shape = new Line();
+                    case Shape::Type::SKETCH:
+                        shape = new Sketch;
                         break;
                     case Shape::Type::CIRCLE:
-                        shape = new Circle();
+                        shape = new Circle;
                         break;
                     default:
                         file.setstate(std::ios_base::badbit);
@@ -415,6 +434,10 @@ void Board::on_open()
                     }
                     file >> *shape;
                     add_reference(shape, zoom);
+                    if (type == Shape::Type::SKETCH)
+                    {
+                        pad_.push({static_cast<Sketch*>(shape), zoom});
+                    }
                 }
             }
             redraw(true);
@@ -479,7 +502,8 @@ void Board::regionize(std::array<std::array<int, 2>, 2>& frame)
     divide(frame[1][1]);
 }
 
-void Shape::process()
+/*
+void Board::process()
 {
     auto bitmap = Cairo::ImageSurface::create(Cairo::Format::FORMAT_A8,
         frame_[1][0] - frame_[0][0] + 10, frame_[1][1] - frame_[0][1] + 10);
@@ -494,3 +518,4 @@ void Shape::process()
     label_ += outText;
     delete[] outText;
 }
+*/
