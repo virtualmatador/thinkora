@@ -7,7 +7,6 @@
 #include <vector>
 
 #include <gtkmm.h>
-#include <tesseract/baseapi.h>
 
 class Shape
 {
@@ -15,6 +14,7 @@ public:
     enum class Type
     {
         SKETCH,
+        POLYLINE,
         CIRCLE,
     };
     enum class Style

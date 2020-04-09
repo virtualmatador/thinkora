@@ -1,22 +1,16 @@
-#ifndef SKETCH_H
-#define SKETCH_H
+#ifndef POLYLINE_H
+#define POLYLINE_H
 
 #include <array>
-#include <chrono>
-#include <cstddef>
 #include <vector>
 
 #include "shape.h"
 
-class Sketch final: public Shape
+class Polyline final: public Shape
 {
 public:
     using Shape::Shape;
     void add_point(const std::array<int, 2>& point);
-    void set_birth();
-    const std::chrono::steady_clock::time_point& get_birth();
-    void kill();
-    const bool& is_alive();
 
 public:
     Type get_type() const override;
@@ -30,8 +24,6 @@ private:
 
 private:
     std::vector<std::array<int, 2>> points_;
-    std::chrono::steady_clock::time_point birth_;
-    bool alive_;
 };
 
-#endif // SKETCH_H
+#endif // POLYLINE_H

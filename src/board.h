@@ -11,13 +11,16 @@
 
 #include <gtkmm.h>
 
-#include "pad.h"
+#include "ocr.h"
 #include "sketch.h"
 
 class Bar;
 
 class Board: public Gtk::DrawingArea
 {
+public:
+    using Map = std::map<int, std::map<std::pair<int, int>, std::set<Shape*>>>;
+
 public:
     Board(Bar* bar);
     ~Board();
@@ -37,35 +40,37 @@ private:
 
 private:
     void clear_data();
-    bool delete_shape(Shape* shape, const int& zoom);
-    void add_reference(Shape* shape, const int& zoom);
-    std::size_t remove_reference(Shape* shape, const int& zoom);
+    void clear_map(Map& map);
+    void draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
+        const Map& map, std::array<std::array<int, 2>, 2> area) const;
+    void add_reference(Map& map, const int& zoom, Shape* shape);
+    void remove_reference(Map& map, const int& zoom, Shape* shape);
+    void save_map(std::ostream& os, const Map& map, const bool& sketch) const;
+    void open_map(std::istream& is, Map& map, const bool& sketch);
     void clamp_position();
     bool check_zoom(const int& zoom, const std::array<int, 2>& center);
     std::string choose_file(Gtk::FileChooserAction action) const;
     std::array<int, 2> get_input_position(const int& x, const int& y) const;
-    void regionize(std::array<std::array<int, 2>, 2>& frame);
 
 private:
     int zoom_;
     std::array<int, 2> center_;
-    std::map<int, 
-        std::map<std::pair<int, int>,
-        std::set<Shape*>>> references_;
     mutable bool modified_;
+    Sketch* sketch_;
+    Map shapes_;
+    mutable std::mutex shapes_lock_;
+    Map sketches_;
+    mutable std::mutex sketches_lock_;
     std::array<int, 2> center_pre_pad_;
     std::array<int, 2> mouse_position_;
     std::array<int, 2> mouse_pre_pad_;
     std::stack<std::array<int, 2>> zoom_lag_;
     int mouse_button_;
-    Sketch* sketch_;
-    Pad pad_;
-    mutable std::mutex lock_shapes_;
+    Ocr ocr_;
     Bar* bar_;
 
 public:
     static std::vector<std::vector<std::vector<double>>> dashes_;
-    static tesseract::TessBaseAPI ocr_;
 
 private:
     static const int tile_size_ = 512;
