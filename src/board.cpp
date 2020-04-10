@@ -21,6 +21,7 @@ Board::Board(Bar* bar)
     , mouse_position_{0, 0}
     , mouse_pre_pad_{0, 0}
     , mouse_button_{0}
+    , ocr_{this}
     , bar_{bar}
 {
     add_events(
@@ -74,8 +75,40 @@ void Board::redraw(bool pass_on)
     queue_draw();
 }
 
+std::vector<Sketch> Board::list_sketches(const int& zoom,
+    const std::array<std::array<int, 2>, 2>& frame) const
+{
+    std::set<const Sketch*> listed;
+    std::vector<Sketch> sketches;
+    std::vector<std::array<std::array<int, 2>, 2>> jobs;
+    jobs.emplace_back(square(frame));
+    sketches_lock_.lock();
+    for (std::size_t i = 0; i < jobs.size(); ++i)
+    {
+        auto shapes = list_shapes(sketches_, zoom, regionize(jobs[i]));
+        for (const auto& shape: shapes)
+        {
+            auto sketch = static_cast<const Sketch*>(shape);
+            if (listed.find(sketch) == listed.end())
+            {
+                auto frame = square(sketch->get_frame());
+                if (touch(jobs[i], frame))
+                {
+                    sketches.emplace_back(*sketch);
+                    listed.insert(sketch);
+                    jobs.emplace_back(frame);
+                }
+            }
+        }
+    }
+    sketches_lock_.unlock();
+    return sketches;
+}
+
+
 void Board::clear_data()
 {
+    ocr_.clear();
     shapes_lock_.lock();
     clear_map(shapes_);
     sketches_lock_.lock();
@@ -98,14 +131,7 @@ void Board::clear_map(Map& map)
             {
                 auto shape = *shapes.begin();
                 remove_reference(map, zoom, shape);
-                if (shape->get_type() == Shape::Type::SKETCH)
-                {
-                    static_cast<Sketch*>(shape)->kill();
-                }
-                else
-                {
-                    delete shape;
-                }                
+                delete shape;
             }
         }
     }
@@ -114,7 +140,7 @@ void Board::clear_map(Map& map)
 
 void Board::add_reference(Map& map, const int& zoom, Shape* shape)
 {
-    auto frame = regionize(shape->get_frame(), +tile_size_);
+    auto frame = regionize(shape->get_frame());
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
@@ -126,7 +152,7 @@ void Board::add_reference(Map& map, const int& zoom, Shape* shape)
 
 void Board::remove_reference(Map& map, const int& zoom, Shape* shape)
 {
-    auto frame = regionize(shape->get_frame(), +tile_size_);
+    auto frame = regionize(shape->get_frame());
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
@@ -166,39 +192,46 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
 }
 
 void Board::draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
-    const Map& references, std::array<std::array<int, 2>, 2> area) const
+    const Map& map, const std::array<std::array<int, 2>, 2>& area) const
 {
     for (int zoom_delta = draw_level_limit_; zoom_delta >= -draw_level_limit_;
         --zoom_delta)
     {
-        auto layer = references.find(zoom_ - zoom_delta);
-        if (layer != references.end())
+        std::array<std::array<int, 2>, 2> view;
+        view[0] = zoom(area[0], -zoom_delta);
+        view[1] = zoom(area[1], -zoom_delta);
+        view = regionize(view);
+        auto targets = list_shapes(map, zoom_ - zoom_delta, view);
+        for (const auto& target: targets)
         {
-            std::set<const Shape*> targets;
-            std::array<std::array<int, 2>, 2> view;
-            view[0] = zoom(area[0], -zoom_delta);
-            view[1] = zoom(area[1], -zoom_delta);
-            view = regionize(view, +tile_size_);
-            for (auto x = view[0][0]; x <= view[1][0]; ++x)
+            target->draw(cr, zoom_delta, area[0]);
+        }
+    }
+}
+
+std::set<const Shape*> Board::list_shapes(const Map& map, const int& zoom,
+    const std::array<std::array<int, 2>, 2>& view) const
+{
+    std::set<const Shape*> shapes;
+    auto layer = map.find(zoom);
+    if (layer != map.end())
+    {
+        for (auto x = view[0][0]; x <= view[1][0]; ++x)
+        {
+            for (auto y = view[0][1]; y <= view[1][1]; ++y)
             {
-                for (auto y = view[0][1]; y <= view[1][1]; ++y)
+                auto shapeset = layer->second.find({x, y});
+                if (shapeset != layer->second.end())
                 {
-                    auto shapeset = layer->second.find({x, y});
-                    if (shapeset != layer->second.end())
+                    for (const auto& shape: shapeset->second)
                     {
-                        for (const auto& shape: shapeset->second)
-                        {
-                            targets.insert(shape);
-                        }
+                        shapes.insert(shape);
                     }
                 }
             }
-            for (const auto& target: targets)
-            {
-                target->draw(cr, zoom_delta, area[0]);
-            }
         }
     }
+    return shapes;
 }
 
 bool Board::on_button_press_event(GdkEventButton* button_event)
@@ -258,12 +291,13 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         if (mouse_button_ == 1)
         {
             mouse_button_ = 0;
-            sketch_->set_birth();
             sketch_->set_frame();
+            sketch_->set_birth();
+            auto frame = sketch_->get_frame();
             sketches_lock_.lock();
             add_reference(sketches_, zoom_, sketch_);
             sketches_lock_.unlock();
-            ocr_.push({sketch_, zoom_});
+            ocr_.add(zoom_, frame);
             sketch_ = nullptr;
             modified_ = true;
             redraw(true);
@@ -347,10 +381,10 @@ void Board::on_save() const
             shapes_lock_.lock();
             save_map(file, shapes_, false);
             sketches_lock_.lock();
+            modified_ = false;
             shapes_lock_.unlock();
             save_map(file, sketches_, true);
             sketches_lock_.unlock();
-            modified_ = false;
         }
         else
         {
@@ -400,11 +434,11 @@ void Board::on_open()
         std::ifstream file(file_name);
         if (file)
         {
-            modified_ = false;
             clear_data();
             shapes_lock_.lock();
             open_map(file, shapes_, false);
             sketches_lock_.lock();
+            modified_ = false;
             shapes_lock_.unlock();
             open_map(file, sketches_, true);
             sketches_lock_.unlock();
@@ -468,10 +502,12 @@ void Board::open_map(std::istream& is, Map& map, const bool& sketch)
         });
         for (const auto& ocr_job: ocr_jobs)
         {
-            ocr_.push(ocr_job);
+            ocr_job.first->set_birth();
+            ocr_.add(ocr_job.second, ocr_job.first->get_frame());
         }
     }
 }
+
 std::string Board::choose_file(Gtk::FileChooserAction action) const
 {
     Gtk::FileChooserDialog file_chooser(*(Gtk::Window*)get_toplevel(),

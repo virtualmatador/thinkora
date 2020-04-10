@@ -26,6 +26,8 @@ public:
     ~Board();
     bool check_modified();
     void redraw(bool pass_on);
+    std::vector<Sketch> list_sketches(const int& zoom,
+        const std::array<std::array<int, 2>, 2>& frame) const;
 
 private:
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
@@ -42,7 +44,9 @@ private:
     void clear_data();
     void clear_map(Map& map);
     void draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
-        const Map& map, std::array<std::array<int, 2>, 2> area) const;
+        const Map& map, const std::array<std::array<int, 2>, 2>& area) const;
+    std::set<const Shape*> list_shapes(const Map& map, const int& zoom,
+        const std::array<std::array<int, 2>, 2>& view) const;
     void add_reference(Map& map, const int& zoom, Shape* shape);
     void remove_reference(Map& map, const int& zoom, Shape* shape);
     void save_map(std::ostream& os, const Map& map, const bool& sketch) const;
@@ -71,13 +75,6 @@ private:
 
 public:
     static std::vector<std::vector<std::vector<double>>> dashes_;
-
-private:
-    static const int tile_size_ = 512;
-    static const int zoom_limit_ = 64;
-    static const int position_limit_ = 1000000000;
-    static const int draw_level_limit_ = 6;
-    static const int width_limit_ = 4;
 
 private:
     friend class Bar;

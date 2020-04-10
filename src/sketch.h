@@ -15,8 +15,6 @@ public:
     void add_point(const std::array<int, 2>& point);
     void set_birth();
     const std::chrono::steady_clock::time_point& get_birth();
-    void kill();
-    const bool& is_alive();
 
 public:
     Type get_type() const override;
@@ -31,7 +29,6 @@ private:
 private:
     std::vector<std::array<int, 2>> points_;
     std::chrono::steady_clock::time_point birth_;
-    bool alive_;
 };
 
 #endif // SKETCH_H

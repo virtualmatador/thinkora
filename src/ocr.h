@@ -1,7 +1,9 @@
 #ifndef OCR_H
 #define OCR_H
 
+#include <array>
 #include <atomic>
+#include <chrono>
 #include <list>
 #include <mutex>
 #include <thread>
@@ -10,24 +12,29 @@
 
 //#include <tesseract/baseapi.h>
 
+class Board;
+
 class Ocr
 {
 public:
-    Ocr();
+    Ocr(Board* board);
     ~Ocr();
-    void push(std::pair<const Sketch*, int> sketch);
+    void add(const int& zoom, const std::array<std::array<int, 2>, 2>& frame);
+    void clear();
 
 private:
-    bool get_sketch();
+    std::chrono::steady_clock::time_point get_sketch();
     void process();
-    void clear();
 
 private:
     //tesseract::TessBaseAPI ocr_;
     std::thread thread_;
     std::atomic<bool> run_;
-    std::list<std::pair<const Sketch*, int>> sketchs_;
-    std::mutex lock_sketchs_;
+    std::list<std::pair<int, std::array<std::array<int, 2>, 2>>> jobs_;
+    bool reset_;
+    std::mutex jobs_lock_;
+    std::vector<Sketch> sketches_;
+    Board* board_;
 };
 
 #endif // OCR_H

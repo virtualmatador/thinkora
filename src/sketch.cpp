@@ -9,23 +9,12 @@ void Sketch::add_point(const std::array<int, 2>& point)
 
 void Sketch::set_birth()
 {
-    alive_ = true;
     birth_ = std::chrono::steady_clock::now();
 }
 
 const std::chrono::steady_clock::time_point& Sketch::get_birth()
 {
     return birth_;
-}
-
-void Sketch::kill()
-{
-    alive_ = false;
-}
-
-const bool& Sketch::is_alive()
-{
-    return alive_;
 }
 
 Shape::Type Sketch::get_type() const

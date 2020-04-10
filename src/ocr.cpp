@@ -1,7 +1,12 @@
+#include "board.h"
+#include "toolbox.h"
+
 #include "ocr.h"
 
-Ocr::Ocr()
+Ocr::Ocr(Board* board)
     : run_{true}
+    , reset_{false}
+    , board_{board}
 {
     /*
     if (ocr_.Init(nullptr, "eng"))
@@ -13,13 +18,21 @@ Ocr::Ocr()
     {
         while (run_)
         {
-            if (get_sketch())
+            auto recent = get_sketch();
+            if (recent != std::chrono::steady_clock::time_point::min())
             {
-                process();
-            }
-            else
-            {
-                std::this_thread::sleep_for(std::chrono::operator""ms(100));
+                auto passed = std::chrono::steady_clock::now() - recent;
+                if (passed > std::chrono::operator""s(1))
+                {
+                    if (sketches_.size() > 0)
+                    {
+                        process();
+                    }
+                }
+                else
+                {
+                    std::this_thread::sleep_for(std::chrono::operator""s(1) - passed);
+                }
             }
         }
     });
@@ -31,47 +44,64 @@ Ocr::~Ocr()
     thread_.join();
     //ocr_.End();
 }
-
-void Ocr::push(std::pair<const Sketch*, int> sketch)
+void Ocr::add(const int& zoom, const std::array<std::array<int, 2>, 2>& frame)
 {
-    std::lock_guard<std::mutex> lock {lock_sketchs_};
-    sketchs_.emplace_back(sketch);
-}
-
-bool Ocr::get_sketch()
-{
-    /*
-    std::lock_guard<std::mutex> lock{lock_sketchs_};
-    std::pair<const Shape*, int> sketch;
-    if (sketchs_.empty())
-    {
-        sketch = {nullptr, 0};
-    }
-    else
-    {
-        sketch = sketchs_.front();
-        sketchs_.pop_front();
-    }
-
-
-
-    std::lock_guard<std::mutex> lock{lock_sketchs_};
-    sketchs_.pop_front();
-
-*/
-
-    return false;
-}
-
-void Ocr::process()
-{
-
+    std::lock_guard<std::mutex> lock{jobs_lock_};
+    jobs_.emplace_back(zoom, frame);
 }
 
 void Ocr::clear()
 {
-    std::lock_guard<std::mutex> lock{lock_sketchs_};
-    sketchs_.clear();
+    std::lock_guard<std::mutex> lock{jobs_lock_};
+    jobs_.clear();
+    reset_ = true;
+}
+
+std::chrono::steady_clock::time_point Ocr::get_sketch()
+{
+    std::pair<int, std::array<std::array<int, 2UL>, 2UL>> job;
+    bool job_found;
+    sketches_.clear();
+    {
+        std::lock_guard<std::mutex> lock{jobs_lock_};
+        if (jobs_.size() > 0)
+        {
+            job = jobs_.front();
+            jobs_.pop_front();
+            job_found = true;
+        }
+        else
+        {
+            job_found = false;
+        }
+    }
+    std::chrono::steady_clock::time_point recent;
+    if (job_found)
+    {
+        recent = std::chrono::steady_clock::time_point::min();
+        sketches_ = board_->list_sketches(job.first, job.second);
+    }
+    else
+    {
+        recent = std::chrono::steady_clock::now();
+    }
+    return recent;
+}
+
+void Ocr::process()
+{
+    // combine sketches [end-start] touch
+    // process
+    // modify using sticky points and grid
+    // create sticky points
+    {
+        std::lock_guard<std::mutex> lock{jobs_lock_};
+        if (reset_)
+        {
+            reset_ = false;
+            // throw results away
+        }
+    }
 }
 
 /*

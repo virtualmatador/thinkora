@@ -4,6 +4,7 @@
 #include <string>
 
 #include "board.h"
+#include "toolbox.h"
 
 #include "bar.h"
 
@@ -155,7 +156,7 @@ void Bar::add_line()
         std::vector<std::pair<Gtk::Button, Gtk::DrawingArea>> types[2];
         for (std::size_t i = 0; i < 2; ++i)
         {
-            for (std::size_t j = 0; j < (i == 0 ? board_->width_limit_ :
+            for (std::size_t j = 0; j < (i == 0 ? width_limit_ :
                 int(Shape::Style::SIZE)); ++j)
             {
                 types[i].emplace_back(std::pair<Gtk::Button,
