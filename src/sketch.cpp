@@ -2,6 +2,12 @@
 
 #include "sketch.h"
 
+void Sketch::set_sketch()
+{
+    frame_ = {std::numeric_limits<int>::max(), std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::min(), std::numeric_limits<int>::min()};
+}
+
 void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
 {
     birth_ = birth;
@@ -10,15 +16,10 @@ void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
 void Sketch::add_point(const std::array<int, 2>& point)
 {
     points_.emplace_back(point);
-    frame_[0] = point;
-    frame_[1] = point;
-    for (std::size_t i = 1; i < points_.size(); ++i)
-    {
-        frame_[0][0] = std::min(frame_[0][0], points_[i][0]);
-        frame_[0][1] = std::min(frame_[0][1], points_[i][1]);
-        frame_[1][0] = std::max(frame_[1][0], points_[i][0]);
-        frame_[1][1] = std::max(frame_[1][1], points_[i][1]);
-    }
+    frame_[0][0] = std::min(frame_[0][0], point[0]);
+    frame_[0][1] = std::min(frame_[0][1], point[1]);
+    frame_[1][0] = std::max(frame_[1][0], point[0]);
+    frame_[1][1] = std::max(frame_[1][1], point[1]);
 }
 
 const std::chrono::steady_clock::time_point& Sketch::get_birth() const

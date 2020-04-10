@@ -12,6 +12,7 @@ class Sketch final: public Shape
 {
 public:
     using Shape::Shape;
+    void set_sketch();
     void set_birth(const std::chrono::steady_clock::time_point& birth);
     void add_point(const std::array<int, 2>& point);
     const std::chrono::steady_clock::time_point& get_birth() const;

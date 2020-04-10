@@ -26,10 +26,9 @@ public:
     ~Board();
     bool check_modified();
     void redraw(bool pass_on);
-    std::vector<Sketch> list_sketches(const int& zoom,
-        const std::array<std::array<int, 2>, 2>& frame) const;
-    bool replace_sketches(std::vector<Sketch>& sketches, const int& zoom,
-        const std::array<std::array<int, 2>, 2>& frame, Shape* shape);
+    std::vector<Sketch> list_sketches(const Job* job) const;
+    bool replace_sketches(const Job* job, std::vector<Sketch>& sketches,
+        Shape* shape);
 
 private:
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
@@ -45,8 +44,7 @@ private:
 private:
     void clear_data();
     void clear_map(Map& map);
-    void push_sketches(const int& zoom,
-        const std::array<std::array<int, 2>, 2>& frame,
+    void push_sketches(const Job* job,
         std::function<void(Sketch&)> pusher) const;
     void draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
         const Map& map, const std::array<std::array<int, 2>, 2>& area) const;

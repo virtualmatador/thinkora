@@ -35,10 +35,6 @@ void Polyline::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
     {
         points.emplace_back(transform(point, zoom_delta, pad));
     }
-    if (points.size() == 1)
-    {
-        cr->set_line_cap(Cairo::LineCap::LINE_CAP_ROUND);
-    }
     cr->move_to(points[0][0], points[0][1]);
     for (int i = 0; i < points.size(); ++i)
     {

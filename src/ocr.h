@@ -14,23 +14,32 @@
 
 class Board;
 
+class Job
+{
+public:
+    int zoom_;
+    std::array<std::array<int, 2>, 2> frame_;
+    int line_width_;
+    Gdk::RGBA color_;
+    Shape::Style style_;
+};
+
 class Ocr
 {
 public:
     Ocr(Board* board);
     ~Ocr();
-    void add(const int& zoom, const std::array<std::array<int, 2>, 2>& frame);
+    void add(const Job& job);
 
 private:
     bool get_sketch();
-    bool process(const int& zoom, const std::array<std::array<int, 2>, 2>&
-        frame, std::vector<Sketch>& sketches);
+    bool process(const Job* job, std::vector<Sketch>& sketches);
 
 private:
     //tesseract::TessBaseAPI ocr_;
     std::thread thread_;
     std::atomic<bool> run_;
-    std::list<std::pair<int, std::array<std::array<int, 2>, 2>>> jobs_;
+    std::list<Job> jobs_;
     std::mutex jobs_lock_;
     Board* board_;
 };

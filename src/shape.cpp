@@ -19,6 +19,21 @@ Shape::Shape(const int& thickness, const Gdk::RGBA& color, const Style& style)
 {
 }
 
+const int& Shape::get_line_width() const
+{
+    return line_width_;
+}
+
+const Gdk::RGBA& Shape::get_color() const
+{
+    return color_;
+}
+
+const Shape::Style& Shape::get_style() const
+{
+    return style_;
+}
+
 const std::array<std::array<int, 2>, 2>& Shape::get_frame() const
 {
     return frame_;
@@ -31,8 +46,8 @@ void Shape::draw(const Cairo::RefPtr<Cairo::Context>& cr,
         color_.get_blue(), color_.get_alpha());
     cr->set_line_width(line_width_);
     cr->set_dash(Board::dashes_[line_width_ - 1][int(style_)], 0.0);
+    cr->set_line_cap(Cairo::LineCap::LINE_CAP_BUTT);
     draw_details(cr, zoom_delta, pad);
-    cr->stroke();
 }
 
 void Shape::write(std::ostream& os) const
