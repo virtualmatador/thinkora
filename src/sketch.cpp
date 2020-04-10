@@ -2,17 +2,26 @@
 
 #include "sketch.h"
 
+void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
+{
+    birth_ = birth;
+}
+
 void Sketch::add_point(const std::array<int, 2>& point)
 {
     points_.emplace_back(point);
+    frame_[0] = point;
+    frame_[1] = point;
+    for (std::size_t i = 1; i < points_.size(); ++i)
+    {
+        frame_[0][0] = std::min(frame_[0][0], points_[i][0]);
+        frame_[0][1] = std::min(frame_[0][1], points_[i][1]);
+        frame_[1][0] = std::max(frame_[1][0], points_[i][0]);
+        frame_[1][1] = std::max(frame_[1][1], points_[i][1]);
+    }
 }
 
-void Sketch::set_birth()
-{
-    birth_ = std::chrono::steady_clock::now();
-}
-
-const std::chrono::steady_clock::time_point& Sketch::get_birth()
+const std::chrono::steady_clock::time_point& Sketch::get_birth() const
 {
     return birth_;
 }
@@ -20,21 +29,6 @@ const std::chrono::steady_clock::time_point& Sketch::get_birth()
 Shape::Type Sketch::get_type() const
 {
     return Type::SKETCH;
-}
-
-void Sketch::set_frame()
-{
-    frame_[0] = {std::numeric_limits<int>::max(),
-        std::numeric_limits<int>::max()};
-    frame_[1] = {std::numeric_limits<int>::min(),
-        std::numeric_limits<int>::min()};;
-    for (const auto& point: points_)
-    {
-        frame_[0][0] = std::min(frame_[0][0], point[0]);
-        frame_[0][1] = std::min(frame_[0][1], point[1]);
-        frame_[1][0] = std::max(frame_[1][0], point[0]);
-        frame_[1][1] = std::max(frame_[1][1], point[1]);
-    }
 }
 
 void Sketch::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,

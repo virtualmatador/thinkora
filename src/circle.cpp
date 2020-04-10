@@ -5,20 +5,16 @@
 void Circle::set_circle(const std::array<int, 2>& center, const int& radius)
 {
     circle_ = {center, {center[0] + radius, center[1] + radius}};
-}
-
-Shape::Type Circle::get_type() const
-{
-    return Type::CIRCLE;
-}
-
-void Circle::set_frame()
-{
     frame_ =
     {
         2 * circle_[0][0] - circle_[1][0], 2 * circle_[0][1] - circle_[1][1],
         circle_[1]
     };
+}
+
+Shape::Type Circle::get_type() const
+{
+    return Type::CIRCLE;
 }
 
 void Circle::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,

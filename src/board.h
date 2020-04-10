@@ -28,6 +28,8 @@ public:
     void redraw(bool pass_on);
     std::vector<Sketch> list_sketches(const int& zoom,
         const std::array<std::array<int, 2>, 2>& frame) const;
+    bool replace_sketches(std::vector<Sketch>& sketches, const int& zoom,
+        const std::array<std::array<int, 2>, 2>& frame, Shape* shape);
 
 private:
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
@@ -43,9 +45,12 @@ private:
 private:
     void clear_data();
     void clear_map(Map& map);
+    void push_sketches(const int& zoom,
+        const std::array<std::array<int, 2>, 2>& frame,
+        std::function<void(Sketch&)> pusher) const;
     void draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
         const Map& map, const std::array<std::array<int, 2>, 2>& area) const;
-    std::set<const Shape*> list_shapes(const Map& map, const int& zoom,
+    std::set<Shape*> list_shapes(const Map& map, const int& zoom,
         const std::array<std::array<int, 2>, 2>& view) const;
     void add_reference(Map& map, const int& zoom, Shape* shape);
     void remove_reference(Map& map, const int& zoom, Shape* shape);
@@ -60,6 +65,7 @@ private:
     int zoom_;
     std::array<int, 2> center_;
     mutable bool modified_;
+    bool cleared_;
     Sketch* sketch_;
     Map shapes_;
     mutable std::mutex shapes_lock_;

@@ -39,7 +39,6 @@ private:
 
 public:
     virtual Type get_type() const = 0;
-    virtual void set_frame() = 0;
 
 private:
     virtual void draw_details(const Cairo::RefPtr<Cairo::Context>& cr,

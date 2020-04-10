@@ -1,11 +1,12 @@
 #include "board.h"
+#include "circle.h"
+#include "polyline.h"
 #include "toolbox.h"
 
 #include "ocr.h"
 
 Ocr::Ocr(Board* board)
     : run_{true}
-    , reset_{false}
     , board_{board}
 {
     /*
@@ -18,21 +19,9 @@ Ocr::Ocr(Board* board)
     {
         while (run_)
         {
-            auto recent = get_sketch();
-            if (recent != std::chrono::steady_clock::time_point::min())
+            if (get_sketch())
             {
-                auto passed = std::chrono::steady_clock::now() - recent;
-                if (passed > std::chrono::operator""s(1))
-                {
-                    if (sketches_.size() > 0)
-                    {
-                        process();
-                    }
-                }
-                else
-                {
-                    std::this_thread::sleep_for(std::chrono::operator""s(1) - passed);
-                }
+                std::this_thread::sleep_for(std::chrono::operator""ms(100));
             }
         }
     });
@@ -50,58 +39,65 @@ void Ocr::add(const int& zoom, const std::array<std::array<int, 2>, 2>& frame)
     jobs_.emplace_back(zoom, frame);
 }
 
-void Ocr::clear()
+bool Ocr::get_sketch()
 {
-    std::lock_guard<std::mutex> lock{jobs_lock_};
-    jobs_.clear();
-    reset_ = true;
-}
-
-std::chrono::steady_clock::time_point Ocr::get_sketch()
-{
+    auto time = std::chrono::steady_clock::now();
     std::pair<int, std::array<std::array<int, 2UL>, 2UL>> job;
-    bool job_found;
-    sketches_.clear();
     {
         std::lock_guard<std::mutex> lock{jobs_lock_};
         if (jobs_.size() > 0)
         {
             job = jobs_.front();
-            jobs_.pop_front();
-            job_found = true;
         }
         else
         {
-            job_found = false;
+            return true;
         }
     }
-    std::chrono::steady_clock::time_point recent;
-    if (job_found)
+    auto sketches = board_->list_sketches(job.first, job.second);
+    std::chrono::steady_clock::time_point recent =
+        std::chrono::steady_clock::time_point::min();
+    for (const auto& sketch: sketches)
     {
-        recent = std::chrono::steady_clock::time_point::min();
-        sketches_ = board_->list_sketches(job.first, job.second);
+        if (recent < sketch.get_birth())
+        {
+            recent = sketch.get_birth();
+        }
     }
-    else
+    if (recent != std::chrono::steady_clock::time_point::min() &&
+        (recent == std::chrono::steady_clock::time_point::max() ||
+        time - recent < std::chrono::operator""s(1)))
     {
-        recent = std::chrono::steady_clock::now();
+        return true;
     }
-    return recent;
+    else if (sketches.size() == 0 || process(job.first, job.second, sketches))
+    {
+        std::lock_guard<std::mutex> lock{jobs_lock_};
+        jobs_.pop_front();
+    }
+    return false;
 }
 
-void Ocr::process()
+bool Ocr::process(const int& zoom, const std::array<std::array<int, 2>, 2>&
+    frame, std::vector<Sketch>& sketches)
 {
     // combine sketches [end-start] touch
     // process
     // modify using sticky points and grid
     // create sticky points
-    {
-        std::lock_guard<std::mutex> lock{jobs_lock_};
-        if (reset_)
+    // if delete sketches insert shape
+    Shape* shape;
+    Circle* circle = new Circle(4, Gdk::RGBA("#FF0000"), Shape::Style::DASH_DOT);
+    circle->set_circle(
         {
-            reset_ = false;
-            // throw results away
-        }
-    }
+            (frame[0][0] + frame[1][0]) / 2,
+            (frame[0][1] + frame[1][1]) / 2,
+        }, std::max(
+            (frame[1][0] - frame[0][0]) / 2,
+            (frame[1][1] - frame[0][1]) / 2)
+    );
+    shape = circle;
+    return board_->replace_sketches(sketches, zoom, frame, shape);
 }
 
 /*

@@ -12,13 +12,12 @@ class Sketch final: public Shape
 {
 public:
     using Shape::Shape;
+    void set_birth(const std::chrono::steady_clock::time_point& birth);
     void add_point(const std::array<int, 2>& point);
-    void set_birth();
-    const std::chrono::steady_clock::time_point& get_birth();
+    const std::chrono::steady_clock::time_point& get_birth() const;
 
 public:
     Type get_type() const override;
-    void set_frame() override;
 
 private:
     void draw_details(const Cairo::RefPtr<Cairo::Context>& cr,

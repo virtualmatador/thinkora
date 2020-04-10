@@ -11,10 +11,10 @@ class Polyline final: public Shape
 public:
     using Shape::Shape;
     void add_point(const std::array<int, 2>& point);
+    void set_frame();
 
 public:
     Type get_type() const override;
-    void set_frame() override;
 
 private:
     void draw_details(const Cairo::RefPtr<Cairo::Context>& cr,

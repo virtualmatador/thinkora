@@ -20,20 +20,18 @@ public:
     Ocr(Board* board);
     ~Ocr();
     void add(const int& zoom, const std::array<std::array<int, 2>, 2>& frame);
-    void clear();
 
 private:
-    std::chrono::steady_clock::time_point get_sketch();
-    void process();
+    bool get_sketch();
+    bool process(const int& zoom, const std::array<std::array<int, 2>, 2>&
+        frame, std::vector<Sketch>& sketches);
 
 private:
     //tesseract::TessBaseAPI ocr_;
     std::thread thread_;
     std::atomic<bool> run_;
     std::list<std::pair<int, std::array<std::array<int, 2>, 2>>> jobs_;
-    bool reset_;
     std::mutex jobs_lock_;
-    std::vector<Sketch> sketches_;
     Board* board_;
 };
 

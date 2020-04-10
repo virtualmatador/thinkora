@@ -44,6 +44,11 @@ void Shape::write(std::ostream& os) const
         color_.get_blue() << ' ' <<
         color_.get_alpha() << std::endl;
     os << int(style_) << std::endl;
+    os <<
+        frame_[0][0] << ' ' <<
+        frame_[0][1] << ' ' <<
+        frame_[1][0] << ' ' <<
+        frame_[1][1] << std::endl;
     write_dtails(os);
 }
 
@@ -60,8 +65,12 @@ void Shape::read(std::istream& is)
         is >> color;
     color_.set_alpha(color);
     is >> (int&)style_;
+    is >>
+        frame_[0][0] >>
+        frame_[0][1] >>
+        frame_[1][0] >>
+        frame_[1][1];
     read_details(is);
-    set_frame();
 }
 
 std::ostream& operator<<(std::ostream& os, const Shape& shape)

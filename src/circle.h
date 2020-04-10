@@ -13,7 +13,6 @@ public:
 
 public:
     Type get_type() const override;
-    void set_frame() override;
 
 private:
     void draw_details(const Cairo::RefPtr<Cairo::Context>& cr,

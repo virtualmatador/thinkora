@@ -24,9 +24,9 @@ std::array<std::array<int, 2>, 2> square(
     {
         return
         {
-            frame[0][0] - d / 2,
+            frame[0][0] + d / 2,
             frame[0][1],
-            frame[1][0] + d / 2,
+            frame[1][0] - d / 2,
             frame[1][1],
         };
     }
