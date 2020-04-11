@@ -63,7 +63,7 @@ private:
     int zoom_;
     std::array<int, 2> center_;
     mutable bool modified_;
-    bool cleared_;
+    mutable bool cleared_;
     Sketch* sketch_;
     Map shapes_;
     mutable std::mutex shapes_lock_;

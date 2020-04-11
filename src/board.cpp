@@ -16,6 +16,7 @@ Board::Board(Bar* bar)
     : zoom_{0}
     , center_{0, 0}
     , modified_{false}
+    , cleared_{false}
     , sketch_{nullptr}
     , center_pre_pad_{0, 0}
     , mouse_position_{0, 0}
@@ -79,6 +80,7 @@ std::vector<Sketch> Board::list_sketches(const Job* job) const
 {
     std::vector<Sketch> sketches;
     sketches_lock_.lock();
+    cleared_ = false;
     push_sketches(job, [&](const Sketch& sketch)
     {
         sketches.emplace_back(sketch);
@@ -93,20 +95,28 @@ bool Board::replace_sketches(const Job* job, std::vector<Sketch>& sketches,
     std::vector<Sketch*> latest_sketches;
     shapes_lock_.lock();
     sketches_lock_.lock();
-    push_sketches(job, [&](Sketch& sketch)
+    bool found;
+    if (!cleared_)
     {
-        latest_sketches.emplace_back(&sketch);
-    });
-    bool found = true;
-    if (latest_sketches.size() == sketches.size())
-    {
-        for (std::size_t i = 0; i < sketches.size(); ++i)
+        push_sketches(job, [&](Sketch& sketch)
         {
-            if (latest_sketches[i]->get_birth() != sketches[i].get_birth())
+            latest_sketches.emplace_back(&sketch);
+        });
+        if (latest_sketches.size() == sketches.size())
+        {
+            found = true;
+            for (std::size_t i = 0; i < sketches.size(); ++i)
             {
-                found = false;
-                break;
+                if (latest_sketches[i]->get_birth() != sketches[i].get_birth())
+                {
+                    found = false;
+                    break;
+                }
             }
+        }
+        else
+        {
+            found = false;
         }
     }
     else
@@ -143,6 +153,7 @@ void Board::clear_data()
     shapes_lock_.lock();
     clear_map(shapes_);
     sketches_lock_.lock();
+    cleared_ = true;
     shapes_lock_.unlock();
     clear_map(sketches_);
     sketches_lock_.unlock();
@@ -199,11 +210,12 @@ void Board::push_sketches(const Job* job,
 void Board::add_reference(Map& map, const int& zoom, Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
+    auto& layer = map[zoom];
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
         {
-            map[zoom][{x, y}].insert(shape);
+            layer[{x, y}].insert(shape);
         }
     }
 }
@@ -211,12 +223,22 @@ void Board::add_reference(Map& map, const int& zoom, Shape* shape)
 void Board::remove_reference(Map& map, const int& zoom, Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
+    auto layer = map.find(zoom);
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
         {
-            map[zoom][{x, y}].erase(shape);
+            auto region = layer->second.find({x, y});
+            region->second.erase(shape);
+            if (region->second.size() == 0)
+            {
+                layer->second.erase(region);
+            }
         }
+    }
+    if (layer->second.size() == 0)
+    {
+        map.erase(layer);
     }
 }
 
