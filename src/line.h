@@ -1,5 +1,5 @@
-#ifndef POLYLINE_H
-#define POLYLINE_H
+#ifndef LINE_H
+#define LINE_H
 
 #include <array>
 #include <vector>
@@ -25,4 +25,4 @@ private:
     std::array<std::array<int, 2>, 2> points_;
 };
 
-#endif // POLYLINE_H
+#endif // LINE_H

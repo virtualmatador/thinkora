@@ -1,3 +1,5 @@
+#include <gsl/gsl_fit.h>
+
 #include "board.h"
 #include "circle.h"
 #include "line.h"
@@ -9,12 +11,6 @@ Ocr::Ocr(Board* board)
     : run_{true}
     , board_{board}
 {
-    /*
-    if (ocr_.Init(nullptr, "eng"))
-    {
-        throw std::runtime_error("ocr init");
-    }
-    */
     thread_ = std::thread([this]()
     {
         while (run_)
@@ -31,8 +27,8 @@ Ocr::~Ocr()
 {
     run_ = false;
     thread_.join();
-    //ocr_.End();
 }
+
 void Ocr::add(const Job& job)
 {
     std::lock_guard<std::mutex> lock{jobs_lock_};
@@ -95,6 +91,7 @@ void Ocr::simplify(const Job* job, std::vector<Shape*>& elements,
     const std::vector<std::array<int, 2>>& points,
     std::size_t begin, std::size_t count)
 {
+    //int gsl_fit_linear(const double * x, const size_t xstride, const double * y, const size_t ystride, size_t n, double * c0, double * c1, double * cov00, double * cov01, double * cov11, double * sumsq)
 //    auto factors = calcregression(points, begin, count);
 //    if (error < 10)
     {
@@ -118,21 +115,3 @@ std::vector<Shape*> Ocr::combine(std::vector<Shape*>& elements)
     }
     return shapes;
 }
-
-/*
-void Board::process()
-{
-    auto bitmap = Cairo::ImageSurface::create(Cairo::Format::FORMAT_A8,
-        frame_[1][0] - frame_[0][0] + 10, frame_[1][1] - frame_[0][1] + 10);
-    auto cr = Cairo::Context::create(bitmap);
-    cr->set_source_rgba(1.0, 1.0, 1.0, 1.0);
-    draw_points(cr, transform(0, {frame_[0][0] + 5, frame_[0][1] + 5}));
-    cr->stroke();
-    Board::ocr_.SetImage(bitmap->get_data(), bitmap->get_width(),
-        bitmap->get_height(), 1, bitmap->get_width());
-    auto outText = Board::ocr_.GetUTF8Text();
-    label_ = "TXT: ";
-    label_ += outText;
-    delete[] outText;
-}
-*/

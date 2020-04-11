@@ -12,8 +12,8 @@ Shape::Shape()
 {
 }
 
-Shape::Shape(const int& thickness, const Gdk::RGBA& color, const Style& style)
-    : line_width_{thickness}
+Shape::Shape(const int& line_width, const Gdk::RGBA& color, const Style& style)
+    : line_width_{line_width}
     , color_{color}
     , style_{style}
 {

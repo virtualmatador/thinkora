@@ -12,8 +12,6 @@
 #include "shape.h"
 #include "sketch.h"
 
-//#include <tesseract/baseapi.h>
-
 class Board;
 
 class Job
@@ -42,7 +40,6 @@ private:
     std::vector<Shape*> combine(std::vector<Shape*>& elements);
 
 private:
-    //tesseract::TessBaseAPI ocr_;
     std::thread thread_;
     std::atomic<bool> run_;
     std::list<Job> jobs_;

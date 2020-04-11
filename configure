@@ -5,12 +5,7 @@ echo "thinkora configuring ..."
 packages=\
 "
     libgtkmm-3.0-dev
-    libtesseract-dev
-    libjpeg-dev
-    libgif-dev
-    libtiff-dev
-    libwebp-dev
-    libopenjp2-7-dev
+    libgsl-dev
 "
 libs=\
 "

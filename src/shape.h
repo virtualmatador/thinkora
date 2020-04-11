@@ -28,7 +28,7 @@ public:
 
 public:
     Shape();
-    Shape(const int& thickness, const Gdk::RGBA& color, const Style& style);
+    Shape(const int& line_width, const Gdk::RGBA& color, const Style& style);
     const int& get_line_width() const;
     const Gdk::RGBA& get_color() const;
     const Style& get_style() const;

@@ -542,16 +542,17 @@ void Board::on_open()
 
 void Board::open_map(std::istream& is, Map& map, const bool& sketch)
 {
-    std::size_t size;
-    is >> size;
-    for (std::size_t i = 0; i < size; ++i)
+    std::size_t zoom_count;
+    is >> zoom_count;
+    for (std::size_t i = 0; i < zoom_count; ++i)
     {
         int zoom;
         Shape::Type type;
         Shape* shape;
-        if (is >> zoom >> size)
+        std::size_t shape_count;
+        if (is >> zoom >> shape_count)
         {
-            for (std::size_t i = 0; i < size; ++i)
+            for (std::size_t i = 0; i < shape_count; ++i)
             {
                 if (sketch)
                 {
