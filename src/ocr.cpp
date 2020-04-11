@@ -1,6 +1,6 @@
 #include "board.h"
 #include "circle.h"
-#include "polyline.h"
+#include "line.h"
 #include "toolbox.h"
 
 #include "ocr.h"

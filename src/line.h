@@ -6,12 +6,11 @@
 
 #include "shape.h"
 
-class Polyline final: public Shape
+class Line final: public Shape
 {
 public:
     using Shape::Shape;
-    void add_point(const std::array<int, 2>& point);
-    void set_frame();
+    void set_line(const std::array<std::array<int, 2>, 2>& points);
 
 public:
     Type get_type() const override;
@@ -23,7 +22,7 @@ private:
     void read_details(std::istream& is);
 
 private:
-    std::vector<std::array<int, 2>> points_;
+    std::array<std::array<int, 2>, 2> points_;
 };
 
 #endif // POLYLINE_H

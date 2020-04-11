@@ -5,7 +5,7 @@
 
 #include "bar.h"
 #include "circle.h"
-#include "polyline.h"
+#include "line.h"
 #include "toolbox.h"
 
 #include "board.h"
@@ -562,8 +562,8 @@ void Board::open_map(std::istream& is, Map& map, const bool& sketch)
                     is >> (int&)(type);
                     switch (type)
                     {
-                    case Shape::Type::POLYLINE:
-                        shape = new Polyline;
+                    case Shape::Type::LINE:
+                        shape = new Line;
                         break;
                     case Shape::Type::CIRCLE:
                         shape = new Circle;

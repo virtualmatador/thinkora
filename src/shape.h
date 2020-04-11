@@ -14,7 +14,7 @@ public:
     enum class Type
     {
         SKETCH,
-        POLYLINE,
+        LINE,
         CIRCLE,
     };
     enum class Style
