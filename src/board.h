@@ -27,8 +27,8 @@ public:
     bool check_modified();
     void redraw(bool pass_on);
     std::vector<Sketch> list_sketches(const Job* job) const;
-    bool replace_sketches(const Job* job, std::vector<Sketch>& sketches,
-        Shape* shape);
+    bool replace_sketches(const Job* job, const std::vector<Sketch>& sketches,
+        const std::vector<Shape*>& shapes);
 
 private:
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;

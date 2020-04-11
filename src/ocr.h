@@ -6,8 +6,10 @@
 #include <chrono>
 #include <list>
 #include <mutex>
+#include <vector>
 #include <thread>
 
+#include "shape.h"
 #include "sketch.h"
 
 //#include <tesseract/baseapi.h>
@@ -34,6 +36,8 @@ public:
 private:
     bool get_sketch();
     bool process(const Job* job, std::vector<Sketch>& sketches);
+    Shape* simplify(const Sketch& sketch);
+    std::vector<Shape*> combine(std::vector<Shape*>& elements);
 
 private:
     //tesseract::TessBaseAPI ocr_;

@@ -89,8 +89,8 @@ std::vector<Sketch> Board::list_sketches(const Job* job) const
     return sketches;
 }
 
-bool Board::replace_sketches(const Job* job, std::vector<Sketch>& sketches,
-    Shape* shape)
+bool Board::replace_sketches(const Job* job, const std::vector<Sketch>& sketches,
+    const std::vector<Shape*>& shapes)
 {
     std::vector<Sketch*> latest_sketches;
     shapes_lock_.lock();
@@ -123,14 +123,17 @@ bool Board::replace_sketches(const Job* job, std::vector<Sketch>& sketches,
     {
         found = false;
     }
-    if (found)
+    for (const auto& shape: shapes)
     {
-        add_reference(shapes_, job->zoom_, shape);
+        if (found)
+        {
+            add_reference(shapes_, job->zoom_, shape);
+        }
+        else
+        {
+            delete shape;
+        }    
     }
-    else
-    {
-        delete shape;
-    }    
     shapes_lock_.unlock();
     if (found)
     {

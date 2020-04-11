@@ -80,23 +80,41 @@ bool Ocr::get_sketch()
 
 bool Ocr::process(const Job* job, std::vector<Sketch>& sketches)
 {
-    // combine sketches [end-start] touch
-    // process
-    // modify using sticky points and grid
+    std::vector<Shape*> elements;
+    for (const auto& sketch: sketches)
+    {
+        elements.emplace_back(simplify(sketch));
+    }
+    std::vector<Shape*> shapes = combine(elements);
+    // modify using sticky points
     // create sticky points
-    // if delete sketches insert shape
+    return board_->replace_sketches(job, sketches, shapes);
+}
+
+Shape* Ocr::simplify(const Sketch& sketch)
+{
     Shape* shape;
-    Circle* circle = new Circle(job->line_width_, job->color_, job->style_);
+    Circle* circle = new Circle(sketch.get_line_width(), sketch.get_color(), sketch.get_style());
     circle->set_circle(
         {
-            (job->frame_[0][0] + job->frame_[1][0]) / 2,
-            (job->frame_[0][1] + job->frame_[1][1]) / 2,
+            (sketch.get_frame()[0][0] + sketch.get_frame()[1][0]) / 2,
+            (sketch.get_frame()[0][1] + sketch.get_frame()[1][1]) / 2,
         }, std::max(
-            (job->frame_[1][0] - job->frame_[0][0]) / 2,
-            (job->frame_[1][1] - job->frame_[0][1]) / 2)
+            (sketch.get_frame()[1][0] - sketch.get_frame()[0][0]) / 2,
+            (sketch.get_frame()[1][1] - sketch.get_frame()[0][1]) / 2)
     );
     shape = circle;
-    return board_->replace_sketches(job, sketches, shape);
+    return shape;
+}
+
+std::vector<Shape*> Ocr::combine(std::vector<Shape*>& elements)
+{
+    std::vector<Shape*> shapes;
+    for (const auto& element: elements)
+    {
+        shapes.emplace_back(element);
+    }
+    return shapes;
 }
 
 /*
