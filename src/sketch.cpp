@@ -22,6 +22,11 @@ void Sketch::add_point(const std::array<int, 2>& point)
     frame_[1][1] = std::max(frame_[1][1], point[1]);
 }
 
+const std::vector<std::array<int, 2>>& Sketch::get_points() const
+{
+    return points_;
+}
+
 const std::chrono::steady_clock::time_point& Sketch::get_birth() const
 {
     return birth_;

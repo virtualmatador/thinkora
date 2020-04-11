@@ -83,7 +83,7 @@ bool Ocr::process(const Job* job, std::vector<Sketch>& sketches)
     std::vector<Shape*> elements;
     for (const auto& sketch: sketches)
     {
-        elements.emplace_back(simplify(sketch));
+        simplify(job, elements, sketch.get_points(), 0, sketch.get_points().size());
     }
     std::vector<Shape*> shapes = combine(elements);
     // modify using sticky points
@@ -91,20 +91,22 @@ bool Ocr::process(const Job* job, std::vector<Sketch>& sketches)
     return board_->replace_sketches(job, sketches, shapes);
 }
 
-Shape* Ocr::simplify(const Sketch& sketch)
+void Ocr::simplify(const Job* job, std::vector<Shape*>& elements,
+    const std::vector<std::array<int, 2>>& points,
+    std::size_t begin, std::size_t count)
 {
-    Shape* shape;
-    Circle* circle = new Circle(sketch.get_line_width(), sketch.get_color(), sketch.get_style());
-    circle->set_circle(
-        {
-            (sketch.get_frame()[0][0] + sketch.get_frame()[1][0]) / 2,
-            (sketch.get_frame()[0][1] + sketch.get_frame()[1][1]) / 2,
-        }, std::max(
-            (sketch.get_frame()[1][0] - sketch.get_frame()[0][0]) / 2,
-            (sketch.get_frame()[1][1] - sketch.get_frame()[0][1]) / 2)
-    );
-    shape = circle;
-    return shape;
+//    auto factors = calcregression(points, begin, count);
+//    if (error < 10)
+    {
+        Line* line = new Line{job->line_width_, job->color_, job->style_};
+        line->set_line(job->frame_);
+        elements.emplace_back(line);
+    }
+//    else
+    {
+//        simplify(job, elements, points, begin, count / 2);
+//        simplify(job, elements, points, begin + count / 2, count - count / 2);
+    }    
 }
 
 std::vector<Shape*> Ocr::combine(std::vector<Shape*>& elements)
