@@ -1,3 +1,5 @@
+#include <cmath>
+
 #include "toolbox.h"
 
 std::array<std::array<int, 2>, 2> regionize(
@@ -83,4 +85,11 @@ std::array<int, 2> transform(const std::array<int, 2>& point,
         transformed[0] -= pad[0];
         transformed[1] -= pad[1];
     return transformed;
+}
+
+double diameter(const std::array<std::array<int, 2>, 2>& frame)
+{
+    return std::pow(
+        std::pow(frame[1][0] - frame[0][0], 2) + 
+        std::pow(frame[1][1] - frame[0][1], 2), 0.5);
 }

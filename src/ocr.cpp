@@ -3,6 +3,7 @@
 #include "board.h"
 #include "circle.h"
 #include "line.h"
+#include "point.h"
 #include "toolbox.h"
 
 #include "ocr.h"
@@ -79,7 +80,16 @@ bool Ocr::process(const Job* job, std::vector<Sketch>& sketches)
     std::vector<Shape*> elements;
     for (const auto& sketch: sketches)
     {
-        simplify(job, elements, sketch.get_points(), 0, sketch.get_points().size());
+        if (sketch.get_points().size() == 1)
+        {
+            Point* point = new Point{job->line_width_, job->color_, job->style_};
+            point->set_point(sketch.get_points().front());
+            elements.emplace_back(point);
+        }
+        else
+        {
+            simplify(job, elements, sketch.get_points(), 0, sketch.get_points().size());
+        }
     }
     std::vector<Shape*> shapes = combine(elements);
     // modify using sticky points
@@ -89,70 +99,68 @@ bool Ocr::process(const Job* job, std::vector<Sketch>& sketches)
 
 void Ocr::simplify(const Job* job, std::vector<Shape*>& elements,
     const std::vector<std::array<int, 2>>& points,
-    std::size_t begin, std::size_t count)
+    std::size_t begin, std::size_t end)
 {
-    std::vector<double> xs, ys;
-    std::array<std::array<int, 2>, 2> frame;
-    for (std::size_t i = begin; i < begin + 2; ++i)
+    if (end - begin == 2)
     {
-        xs.emplace_back(points[i][0]);
-        ys.emplace_back(points[i][1]);
-    }
-    frame[0][0] = std::min(points[0][0], points[1][0]);
-    frame[0][1] = std::min(points[0][1], points[1][1]);
-    frame[1][0] = std::max(points[0][0], points[1][0]);
-    frame[1][1] = std::max(points[0][1], points[1][1]);
-    for (std::size_t i = begin + 2; i < begin + count; ++i)
-    {
-        if ((points[i - 1][0] - points[i - 2][0]) *
-            (points[i][1] - points[i - 1][1]) ==
-            (points[i - 1][1] - points[i - 2][1]) *
-            (points[i][0] - points[i - 1][0]))
+        Line* line = new Line{job->line_width_, job->color_, job->style_};
+        line->set_line(
         {
-            xs.back() = points[i][0];
-            ys.back() = points[i][1];
-        }
-        else
+            points[begin],
+            points[begin + 1],
+        });
+        elements.emplace_back(line);
+    }
+    else
+    {
+        std::vector<double> xs, ys;
+        std::array<std::array<int, 2>, 2> frame;
+        for (std::size_t i = begin; i < begin + 2; ++i)
         {
             xs.emplace_back(points[i][0]);
             ys.emplace_back(points[i][1]);
         }
-        frame[0][0] = std::min(frame[0][0], points[i][0]);
-        frame[0][1] = std::min(frame[0][1], points[i][1]);
-        frame[1][0] = std::max(frame[1][0], points[i][0]);
-        frame[1][1] = std::max(frame[1][1], points[i][1]);
-    }
-    if (frame[1][0] - frame[0][0] < frame[1][1] - frame[0][1])
-    {
-        std::swap(xs, ys);
-    }
-    double c0, c1, cov00, cov01, cov11, sumsq;
-    gsl_fit_linear(xs.data(), 1, ys.data(), 1, xs.size(), &c0, &c1, &cov00, &cov01, &cov11, &sumsq);
-//    if (error < 10)
-    {
-        Line* line = new Line{job->line_width_, job->color_, job->style_};
+        frame[0][0] = std::min(points[0][0], points[1][0]);
+        frame[0][1] = std::min(points[0][1], points[1][1]);
+        frame[1][0] = std::max(points[0][0], points[1][0]);
+        frame[1][1] = std::max(points[0][1], points[1][1]);
+        for (std::size_t i = begin + 2; i < end; ++i)
+        {
+            xs.emplace_back(points[i][0]);
+            ys.emplace_back(points[i][1]);
+            frame[0][0] = std::min(frame[0][0], points[i][0]);
+            frame[0][1] = std::min(frame[0][1], points[i][1]);
+            frame[1][0] = std::max(frame[1][0], points[i][0]);
+            frame[1][1] = std::max(frame[1][1], points[i][1]);
+        }
         if (frame[1][0] - frame[0][0] < frame[1][1] - frame[0][1])
         {
+            std::swap(xs, ys);
+        }
+        double c0, c1, cov00, cov01, cov11, sumsq;
+        if (gsl_fit_linear(xs.data(), 1, ys.data(), 1, xs.size(), &c0, &c1,
+            &cov00, &cov01, &cov11, &sumsq) == 0 &&
+            sumsq / xs.size() < diameter(frame) / 2.0)
+        {
+            Line* line = new Line{job->line_width_, job->color_, job->style_};
+            int x[2] = {int(xs.front()), int(xs.back())};
+            int y[2] = {int(c0 + c1 * xs.front()), int(c0 + c1 * xs.back())};
+            if (frame[1][0] - frame[0][0] < frame[1][1] - frame[0][1])
+            {
+                std::swap(x, y);
+            }
             line->set_line(
             {
-                c0 + c1 * xs.front(), xs.front(),
-                c0 + c1 * xs.back(), xs.back(),
+                x[0], y[0],
+                x[1], y[1],
             });
+            elements.emplace_back(line);
         }
         else
         {
-            line->set_line(
-            {
-                xs.front(), c0 + c1 * xs.front(),
-                xs.back(), c0 + c1 * xs.back(),
-            });
-        }
-        elements.emplace_back(line);
-    }
-//    else
-    {
-//        simplify(job, elements, points, begin, count / 2 + 1);
-//        simplify(job, elements, points, begin + count / 2, count - count / 2);
+            simplify(job, elements, points, begin, (begin + end) / 2 + 1);
+            simplify(job, elements, points, (begin + end) / 2, end);
+        }    
     }    
 }
 

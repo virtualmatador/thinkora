@@ -14,6 +14,7 @@ public:
     enum class Type
     {
         SKETCH,
+        POINT,
         LINE,
         CIRCLE,
     };
@@ -25,6 +26,9 @@ public:
         DOT_DOT,
         SIZE
     };
+
+public:
+    static Shape* create_shape(const Shape::Type& type);
 
 public:
     Shape();

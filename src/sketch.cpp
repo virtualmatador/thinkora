@@ -22,6 +22,20 @@ void Sketch::add_point(const std::array<int, 2>& point)
     frame_[1][1] = std::max(frame_[1][1], point[1]);
 }
 
+void Sketch::finalize()
+{
+    for (std::size_t i = 2; i < points_.size(); ++i)
+    {
+        if ((points_[i - 1][0] - points_[i - 2][0]) *
+            (points_[i][1] - points_[i - 1][1]) ==
+            (points_[i - 1][1] - points_[i - 2][1]) *
+            (points_[i][0] - points_[i - 1][0]))
+        {
+            points_.erase(points_.begin() + (i - 1));
+        }
+    }
+}
+
 const std::vector<std::array<int, 2>>& Sketch::get_points() const
 {
     return points_;

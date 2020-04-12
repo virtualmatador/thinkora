@@ -36,7 +36,7 @@ private:
     bool process(const Job* job, std::vector<Sketch>& sketches);
     void simplify(const Job* job, std::vector<Shape*>& elements,
         const std::vector<std::array<int, 2>>& points,
-        std::size_t begin, std::size_t count);
+        std::size_t begin, std::size_t end);
     std::vector<Shape*> combine(std::vector<Shape*>& elements);
 
 private:

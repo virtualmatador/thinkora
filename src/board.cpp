@@ -6,6 +6,7 @@
 #include "bar.h"
 #include "circle.h"
 #include "line.h"
+#include "point.h"
 #include "toolbox.h"
 
 #include "board.h"
@@ -379,6 +380,7 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         {
             mouse_button_ = 0;
             sketches_lock_.lock();
+            sketch_->finalize();
             sketch_->set_birth(std::chrono::steady_clock::now());
             auto frame = sketch_->get_frame();
             sketches_lock_.unlock();
@@ -556,23 +558,12 @@ void Board::open_map(std::istream& is, Map& map, const bool& sketch)
             {
                 if (sketch)
                 {
-                    shape = new Sketch;
+                    shape = Shape::create_shape(Shape::Type::SKETCH);
                 }
                 else
                 {
                     is >> (int&)(type);
-                    switch (type)
-                    {
-                    case Shape::Type::LINE:
-                        shape = new Line;
-                        break;
-                    case Shape::Type::CIRCLE:
-                        shape = new Circle;
-                        break;
-                    default:
-                        is.setstate(std::ios_base::badbit);
-                        break;
-                    }
+                    shape = Shape::create_shape(type);
                 }
                 is >> *shape;
                 add_reference(map, zoom_, shape);

@@ -2,8 +2,36 @@
 #include <limits>
 
 #include "board.h"
+#include "circle.h"
+#include "line.h"
+#include "point.h"
+#include "sketch.h"
 
 #include "shape.h"
+
+Shape* Shape::create_shape(const Shape::Type& type)
+{
+    Shape* shape;
+    switch (type)
+    {
+    case Shape::Type::SKETCH:
+        shape = new Sketch;
+        break;
+    case Shape::Type::POINT:
+        shape = new Point;
+        break;
+    case Shape::Type::LINE:
+        shape = new Line;
+        break;
+    case Shape::Type::CIRCLE:
+        shape = new Circle;
+        break;
+    default:
+        shape = nullptr;
+        break;
+    }
+    return shape;
+}
 
 Shape::Shape()
     : line_width_{1}

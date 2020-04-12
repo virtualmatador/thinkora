@@ -15,6 +15,7 @@ public:
     void set_sketch();
     void set_birth(const std::chrono::steady_clock::time_point& birth);
     void add_point(const std::array<int, 2>& point);
+    void finalize();
     const std::vector<std::array<int, 2>>& get_points() const;
     const std::chrono::steady_clock::time_point& get_birth() const;
 
