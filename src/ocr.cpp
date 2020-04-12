@@ -91,17 +91,67 @@ void Ocr::simplify(const Job* job, std::vector<Shape*>& elements,
     const std::vector<std::array<int, 2>>& points,
     std::size_t begin, std::size_t count)
 {
-    //int gsl_fit_linear(const double * x, const size_t xstride, const double * y, const size_t ystride, size_t n, double * c0, double * c1, double * cov00, double * cov01, double * cov11, double * sumsq)
-//    auto factors = calcregression(points, begin, count);
+    std::vector<double> xs, ys;
+    std::array<std::array<int, 2>, 2> frame;
+    for (std::size_t i = begin; i < begin + 2; ++i)
+    {
+        xs.emplace_back(points[i][0]);
+        ys.emplace_back(points[i][1]);
+    }
+    frame[0][0] = std::min(points[0][0], points[1][0]);
+    frame[0][1] = std::min(points[0][1], points[1][1]);
+    frame[1][0] = std::max(points[0][0], points[1][0]);
+    frame[1][1] = std::max(points[0][1], points[1][1]);
+    for (std::size_t i = begin + 2; i < begin + count; ++i)
+    {
+        if ((points[i - 1][0] - points[i - 2][0]) *
+            (points[i][1] - points[i - 1][1]) ==
+            (points[i - 1][1] - points[i - 2][1]) *
+            (points[i][0] - points[i - 1][0]))
+        {
+            xs.back() = points[i][0];
+            ys.back() = points[i][1];
+        }
+        else
+        {
+            xs.emplace_back(points[i][0]);
+            ys.emplace_back(points[i][1]);
+        }
+        frame[0][0] = std::min(frame[0][0], points[i][0]);
+        frame[0][1] = std::min(frame[0][1], points[i][1]);
+        frame[1][0] = std::max(frame[1][0], points[i][0]);
+        frame[1][1] = std::max(frame[1][1], points[i][1]);
+    }
+    if (frame[1][0] - frame[0][0] < frame[1][1] - frame[0][1])
+    {
+        std::swap(xs, ys);
+    }
+    double c0, c1, cov00, cov01, cov11, sumsq;
+    gsl_fit_linear(xs.data(), 1, ys.data(), 1, xs.size(), &c0, &c1, &cov00, &cov01, &cov11, &sumsq);
 //    if (error < 10)
     {
         Line* line = new Line{job->line_width_, job->color_, job->style_};
-        line->set_line(job->frame_);
+        if (frame[1][0] - frame[0][0] < frame[1][1] - frame[0][1])
+        {
+            line->set_line(
+            {
+                c0 + c1 * xs.front(), xs.front(),
+                c0 + c1 * xs.back(), xs.back(),
+            });
+        }
+        else
+        {
+            line->set_line(
+            {
+                xs.front(), c0 + c1 * xs.front(),
+                xs.back(), c0 + c1 * xs.back(),
+            });
+        }
         elements.emplace_back(line);
     }
 //    else
     {
-//        simplify(job, elements, points, begin, count / 2);
+//        simplify(job, elements, points, begin, count / 2 + 1);
 //        simplify(job, elements, points, begin + count / 2, count - count / 2);
     }    
 }

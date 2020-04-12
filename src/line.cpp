@@ -5,6 +5,13 @@
 void Line::set_line(const std::array<std::array<int, 2>, 2>& points)
 {
     points_ = points;
+    frame_ = 
+    {
+        std::min(points_[0][0], points_[1][0]),
+        std::min(points_[0][1], points_[1][1]),
+        std::max(points_[0][0], points_[1][0]),
+        std::max(points_[0][1], points_[1][1]),
+    };
 }
 
 Shape::Type Line::get_type() const
