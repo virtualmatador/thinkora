@@ -185,7 +185,7 @@ void Board::push_sketches(const Job* job,
 {
     std::set<const Sketch*> listed;
     std::vector<std::array<std::array<int, 2>, 2>> jobs;
-    jobs.emplace_back(square(job->frame_));
+    jobs.emplace_back(make_square(job->frame_));
     for (std::size_t i = 0; i < jobs.size(); ++i)
     {
         auto shapes = list_shapes(sketches_, job->zoom_, regionize(jobs[i]));
@@ -198,8 +198,8 @@ void Board::push_sketches(const Job* job,
                 auto sketch = static_cast<Sketch*>(shape);
                 if (listed.find(sketch) == listed.end())
                 {
-                    auto frame = square(sketch->get_frame());
-                    if (touch(jobs[i], frame))
+                    auto frame = make_square(sketch->get_frame());
+                    if (check_touch(jobs[i], frame))
                     {
                         pusher(*sketch);
                         listed.insert(sketch);
@@ -278,8 +278,8 @@ void Board::draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
         --zoom_delta)
     {
         std::array<std::array<int, 2>, 2> view;
-        view[0] = zoom(area[0], -zoom_delta);
-        view[1] = zoom(area[1], -zoom_delta);
+        view[0] = apply_zoom(area[0], -zoom_delta);
+        view[1] = apply_zoom(area[1], -zoom_delta);
         view = regionize(view);
         auto targets = list_shapes(map, zoom_ - zoom_delta, view);
         for (const auto& target: targets)

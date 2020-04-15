@@ -36,7 +36,7 @@ void Sketch::finalize()
     }
 }
 
-const std::vector<std::array<int, 2>>& Sketch::get_points() const
+std::vector<std::array<int, 2>>& Sketch::get_points()
 {
     return points_;
 }

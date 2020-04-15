@@ -1,3 +1,7 @@
+#include <cstddef>
+#include <memory>
+#include <vector>
+
 #include <gsl/gsl_fit.h>
 
 #include "board.h"
@@ -78,17 +82,18 @@ bool Ocr::get_sketch()
 bool Ocr::process(const Job* job, std::vector<Sketch>& sketches)
 {
     std::vector<Shape*> elements;
-    for (const auto& sketch: sketches)
+    for (auto& sketch: sketches)
     {
         if (sketch.get_points().size() == 1)
         {
-            Point* point = new Point{job->line_width_, job->color_, job->style_};
+            Point* point =
+                new Point{job->line_width_, job->color_, job->style_};
             point->set_point(sketch.get_points().front());
             elements.emplace_back(point);
         }
         else
         {
-            simplify(job, elements, sketch.get_points(), 0, sketch.get_points().size());
+            simplify(sketch, elements);
         }
     }
     std::vector<Shape*> shapes = combine(elements);
@@ -97,71 +102,58 @@ bool Ocr::process(const Job* job, std::vector<Sketch>& sketches)
     return board_->replace_sketches(job, sketches, shapes);
 }
 
-void Ocr::simplify(const Job* job, std::vector<Shape*>& elements,
-    const std::vector<std::array<int, 2>>& points,
-    std::size_t begin, std::size_t end)
+void Ocr::simplify(Sketch& sketch, std::vector<Shape*>& elements)
 {
-    if (end - begin == 2)
+    auto& points = sketch.get_points();
+    double tolerance = get_diameter(sketch.get_frame()) / 24.0;
+    std::vector<std::tuple<double, double, std::size_t>> redondents;
+    do
     {
-        Line* line = new Line{job->line_width_, job->color_, job->style_};
-        line->set_line(
+        redondents.clear();
+        for (std::size_t i = 2; i < points.size(); ++i)
         {
-            points[begin],
-            points[begin + 1],
+            double len1, len2;
+            auto angle = get_angle(points[i - 2], points[i - 1], points[i],
+                &len1, &len2);
+            if (std::pow(std::cos(angle) + 1.0, 0.6) * std::min(len1, len2) < tolerance)
+            {
+                redondents.emplace_back(angle, len1 * len2, i - 1);
+                ++i;
+            }
+        }
+        std::sort(redondents.begin(), redondents.end(), [](auto& a, auto&b)
+        {
+            if (std::get<0>(a) == std::get<0>(b))
+            {
+                return std::get<1>(a) < std::get<1>(b);
+            }
+            return std::get<0>(a) > std::get<0>(b);
         });
+        redondents.resize((redondents.size() + 1) / 2);
+        std::sort(redondents.begin(), redondents.end(), [](auto& a, auto&b)
+        {
+            return std::get<2>(a) > std::get<2>(b);
+        });
+        for (const auto& redondent: redondents)
+        {
+            points.erase(points.begin() + std::get<2>(redondent));
+        }
+    } while (redondents.size() > 0);
+    /*
+    Check Segment
+        Check convex subsegments
+            Start: {region, angle}
+            End: {region, angle}
+            End - Start: {length, angle}
+            Max-Frame
+    */
+    for (std::size_t i = 1; i < points.size(); ++i)
+    {
+        Line* line = new Line(sketch.get_line_width(), sketch.get_color(),
+            sketch.get_style());
+        line->set_line({points[i - 1], points[i]});
         elements.emplace_back(line);
     }
-    else
-    {
-        std::vector<double> xs, ys;
-        std::array<std::array<int, 2>, 2> frame;
-        for (std::size_t i = begin; i < begin + 2; ++i)
-        {
-            xs.emplace_back(points[i][0]);
-            ys.emplace_back(points[i][1]);
-        }
-        frame[0][0] = std::min(points[0][0], points[1][0]);
-        frame[0][1] = std::min(points[0][1], points[1][1]);
-        frame[1][0] = std::max(points[0][0], points[1][0]);
-        frame[1][1] = std::max(points[0][1], points[1][1]);
-        for (std::size_t i = begin + 2; i < end; ++i)
-        {
-            xs.emplace_back(points[i][0]);
-            ys.emplace_back(points[i][1]);
-            frame[0][0] = std::min(frame[0][0], points[i][0]);
-            frame[0][1] = std::min(frame[0][1], points[i][1]);
-            frame[1][0] = std::max(frame[1][0], points[i][0]);
-            frame[1][1] = std::max(frame[1][1], points[i][1]);
-        }
-        if (frame[1][0] - frame[0][0] < frame[1][1] - frame[0][1])
-        {
-            std::swap(xs, ys);
-        }
-        double c0, c1, cov00, cov01, cov11, sumsq;
-        if (gsl_fit_linear(xs.data(), 1, ys.data(), 1, xs.size(), &c0, &c1,
-            &cov00, &cov01, &cov11, &sumsq) == 0 &&
-            sumsq / xs.size() < diameter(frame) / 2.0)
-        {
-            Line* line = new Line{job->line_width_, job->color_, job->style_};
-            int x[2] = {int(xs.front()), int(xs.back())};
-            int y[2] = {int(c0 + c1 * xs.front()), int(c0 + c1 * xs.back())};
-            if (frame[1][0] - frame[0][0] < frame[1][1] - frame[0][1])
-            {
-                std::swap(x, y);
-            }
-            line->set_line(
-            {
-                x[0], y[0],
-                x[1], y[1],
-            });
-            elements.emplace_back(line);
-        }
-        else
-        {
-            simplify(job, elements, points, begin, (begin + end) / 2 + 1);
-            simplify(job, elements, points, (begin + end) / 2, end);
-        }    
-    }    
 }
 
 std::vector<Shape*> Ocr::combine(std::vector<Shape*>& elements)

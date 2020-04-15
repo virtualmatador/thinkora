@@ -18,7 +18,7 @@ std::array<std::array<int, 2>, 2> regionize(
     };
 }
 
-std::array<std::array<int, 2>, 2> square(
+std::array<std::array<int, 2>, 2> make_square(
     const std::array<std::array<int, 2>, 2>& frame)
 {
     int d = (frame[1][0] - frame[0][0]) - (frame[1][1] - frame[0][1]);
@@ -44,7 +44,7 @@ std::array<std::array<int, 2>, 2> square(
     }    
 }
 
-bool touch(const std::array<std::array<int, 2>, 2>& first,
+bool check_touch(const std::array<std::array<int, 2>, 2>& first,
     const std::array<std::array<int, 2>, 2>& second)
 {
     if ((first[0][0] > second[1][0] || second[0][0] > first[1][0]) ||
@@ -58,7 +58,8 @@ bool touch(const std::array<std::array<int, 2>, 2>& first,
     }
 }
 
-std::array<int, 2> zoom(const std::array<int, 2>& point, const int& zoom_delta)
+std::array<int, 2> apply_zoom(const std::array<int, 2>& point,
+    const int& zoom_delta)
 {
     std::array<int, 2> dest;
     if (zoom_delta > 0)
@@ -81,15 +82,46 @@ std::array<int, 2> zoom(const std::array<int, 2>& point, const int& zoom_delta)
 std::array<int, 2> transform(const std::array<int, 2>& point,
     const int& zoom_delta, const std::array<int, 2>& pad)
 {
-    std::array<int, 2> transformed = zoom(point, zoom_delta);
+    std::array<int, 2> transformed = apply_zoom(point, zoom_delta);
         transformed[0] -= pad[0];
         transformed[1] -= pad[1];
     return transformed;
 }
 
-double diameter(const std::array<std::array<int, 2>, 2>& frame)
+double get_diameter(const std::array<std::array<int, 2>, 2>& frame)
 {
     return std::pow(
         std::pow(frame[1][0] - frame[0][0], 2) + 
         std::pow(frame[1][1] - frame[0][1], 2), 0.5);
+}
+
+int get_area(const std::array<std::array<int, 2>, 2>& frame)
+{
+    return (frame[1][0] - frame[0][0]) * (frame[1][1] - frame[0][1]);
+}
+
+double get_distance(const std::array<int, 2>& point1,
+    const std::array<int, 2>& point2)
+{
+    return std::pow(std::pow(point1[0] - point2[0], 2) +
+        std::pow(point1[1] - point2[1], 2), 0.5);
+}
+
+double get_angle(const std::array<int, 2>& point1,
+    const std::array<int, 2>& point2, const std::array<int, 2>& point3,
+    double* out_len1, double* out_len2)
+{
+    double len1 = get_distance(point1, point2);
+    if (out_len1)
+    {
+        *out_len1 = len1;
+    }
+    double len2 = get_distance(point3, point2);
+    if (out_len2)
+    {
+        *out_len2 = len2;
+    }
+    double dot_product = (point1[0] - point2[0]) * (point3[0] - point2[0]) +
+        (point1[1] - point2[1]) * (point3[1] - point2[1]);
+    return std::acos(dot_product / (len1 * len2));
 }
