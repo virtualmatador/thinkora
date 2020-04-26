@@ -2,8 +2,6 @@
 #include <memory>
 #include <vector>
 
-#include <gsl/gsl_fit.h>
-
 #include "board.h"
 #include "circle.h"
 #include "line.h"
@@ -145,6 +143,7 @@ void Ocr::simplify(Sketch& sketch, std::vector<Shape*>& elements)
             Start: {region, angle}
             End: {region, angle}
             End - Start: {length, angle}
+            End.angle - Start.angle
             Max-Frame
     */
     for (std::size_t i = 1; i < points.size(); ++i)
