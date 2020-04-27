@@ -1,3 +1,6 @@
 [submodule "prerequisite"]
 	path = prerequisite
 	url = ../prerequisite
+[submodule "extern/jsonio"]
+	path = extern/jsonio
+	url = ssh://github.com/virtualmatador/jsonio
