@@ -4,7 +4,7 @@
 #include <array>
 #include <vector>
 
-#include "jsonio/jsonio.hpp"
+#include "json.h"
 
 class Pattern
 {
@@ -14,33 +14,31 @@ public:
     double Match(const std::vector<std::array<int, 2>>& points);
 
 private:
-    class Segment
+    class Convex
     {
-    private:
-        class Convex
-        {
-        private:
-            double b_x;
-            double b_y;
-            int b_a;
-            double e_x;
-            double e_y;
-            int e_a;
-            double d_x;
-            double d_y;
-            int d_a;
-            int d_t;
-            double f_x;
-            double f_y;
-        };
-    
-    private:
-        std::vector<Convex> convexes_;
+    public:
+        bool b_a_b_;
+        int b_a_;
+        double b_x_;
+        double b_y_;
+        bool e_a_b_;
+        int e_a_;
+        double e_x_;
+        double e_y_;
+        bool d_a_b_;
+        int d_a_;
+        double d_x_;
+        double d_y_;
+        int d_t_;
+        double f_x_;
+        double f_y_;
+        int n_b_;
+        int n_e_;
     };
 
 private:
-    wchar_t character_;
-    std::vector<Segment> segments_;
+    std::string character_;
+    std::vector<std::vector<Convex>> segments_;
 };
 
 #endif // PATTERN_H

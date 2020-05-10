@@ -1,6 +1,9 @@
 #include <cstddef>
+#include <fstream>
 #include <memory>
 #include <vector>
+
+#include "json.h"
 
 #include "board.h"
 #include "circle.h"
@@ -14,6 +17,24 @@ Ocr::Ocr(Board* board)
     : run_{true}
     , board_{board}
 {
+    std::fstream read_shape_patterns("pattern/shapes.json");
+    jsonio::json json_shape_patterns;
+    read_shape_patterns >> json_shape_patterns;
+    if (json_shape_patterns.completed())
+    {
+        if (json_shape_patterns.is_array())
+        {
+            for (const auto& json_shape_pattern: json_shape_patterns.get_array())
+            {
+                shape_patterns_.emplace_back(json_shape_pattern.get_object());
+            }
+        }
+    }
+    else
+    {
+        throw std::runtime_error("TODO");
+    }
+    
     thread_ = std::thread([this]()
     {
         while (run_)

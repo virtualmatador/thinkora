@@ -5,12 +5,14 @@
 #include <atomic>
 #include <chrono>
 #include <list>
+#include <map>
 #include <mutex>
 #include <vector>
 #include <thread>
 
 #include "shape.h"
 #include "sketch.h"
+#include "pattern.h"
 
 class Board;
 
@@ -43,6 +45,8 @@ private:
     std::list<Job> jobs_;
     std::mutex jobs_lock_;
     Board* board_;
+    std::vector<Pattern> shape_patterns_;
+    std::map<std::string, std::vector<Pattern>> char_patterns_;
 };
 
 #endif // OCR_H
