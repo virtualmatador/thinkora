@@ -4,6 +4,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <filesystem>
 #include <list>
 #include <map>
 #include <mutex>
@@ -31,13 +32,17 @@ class Ocr
 public:
     Ocr(Board* board);
     ~Ocr();
+    std::vector<Pattern> read_patterns(std::filesystem::path path);
     void add(const Job& job);
 
 private:
     bool get_sketch();
-    bool process(const Job* job, std::vector<Sketch>& sketches);
-    void simplify(Sketch& sketch, std::vector<Shape*>& elements);
-    std::vector<Shape*> combine(std::vector<Shape*>& elements);
+    bool process(const Job* job, std::vector<Sketch>& sketches,
+        const std::array<std::array<int, 2>, 2>& frame);
+    void simplify(Sketch& sketch, const std::array<std::array<int, 2>, 2>&
+        frame, std::vector<std::vector<Convex>>& elements);
+    std::vector<Shape*> match(const Job* job, std::vector<std::vector<Convex>>
+        & elements);
 
 private:
     std::thread thread_;

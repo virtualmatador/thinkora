@@ -36,4 +36,13 @@ double get_angle(const std::array<int, 2>& point1,
     const std::array<int, 2>& point2, const std::array<int, 2>& point3,
     double* out_len1, double* out_len2);
 
+double get_angle(const std::array<int, 2>& vector);
+
+int get_rotation(const int& first_angle, const int& second_angle);
+
+std::array<int, 2> get_center(const std::array<std::array<int, 2>, 2>& frame);
+
+void extend_frame(std::array<std::array<int, 2>, 2>& frame,
+    const std::array<int, 2>& point);
+
 #endif // TOOLBOX_H

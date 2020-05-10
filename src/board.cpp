@@ -77,14 +77,22 @@ void Board::redraw(bool pass_on)
     queue_draw();
 }
 
-std::vector<Sketch> Board::list_sketches(const Job* job) const
+std::vector<Sketch> Board::list_sketches(const Job* job,
+    std::array<std::array<int, 2>, 2>& frame) const
 {
     std::vector<Sketch> sketches;
     sketches_lock_.lock();
     cleared_ = false;
     push_sketches(job, [&](const Sketch& sketch)
     {
+        extend_frame(frame, sketch.get_frame()[0]);
+        extend_frame(frame, sketch.get_frame()[1]);
         sketches.emplace_back(sketch);
+    });
+    std::sort(sketches.begin(), sketches.end(),
+        [](const auto& a, const auto& b)
+    {
+        return a.get_birth() < b.get_birth();
     });
     sketches_lock_.unlock();
     return sketches;
@@ -102,6 +110,11 @@ bool Board::replace_sketches(const Job* job, const std::vector<Sketch>& sketches
         push_sketches(job, [&](Sketch& sketch)
         {
             latest_sketches.emplace_back(&sketch);
+        });
+        std::sort(latest_sketches.begin(), latest_sketches.end(),
+            [](const auto& a, const auto& b)
+        {
+            return a->get_birth() < b->get_birth();
         });
         if (latest_sketches.size() == sketches.size())
         {

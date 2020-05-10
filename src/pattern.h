@@ -6,35 +6,17 @@
 
 #include "json.h"
 
+#include "convex.h"
+
 class Pattern
 {
 public:
-    Pattern(const jsonio::json& pattern);
+    Pattern(const std::string& character, const jsonio::json& pattern);
     ~Pattern();
-    double Match(const std::vector<std::array<int, 2>>& points);
+    double match(const std::vector<std::vector<Convex>>& elements) const;
+    const std::string& get_character() const;
 
 private:
-    class Convex
-    {
-    public:
-        bool b_a_b_;
-        int b_a_;
-        double b_x_;
-        double b_y_;
-        bool e_a_b_;
-        int e_a_;
-        double e_x_;
-        double e_y_;
-        bool d_a_b_;
-        int d_a_;
-        double d_x_;
-        double d_y_;
-        int d_t_;
-        double f_x_;
-        double f_y_;
-        int n_b_;
-        int n_e_;
-    };
 
 private:
     std::string character_;

@@ -1,4 +1,5 @@
 #include <cmath>
+#include <numbers>
 
 #include "toolbox.h"
 
@@ -124,4 +125,49 @@ double get_angle(const std::array<int, 2>& point1,
     double dot_product = (point1[0] - point2[0]) * (point3[0] - point2[0]) +
         (point1[1] - point2[1]) * (point3[1] - point2[1]);
     return std::acos(dot_product / (len1 * len2));
+}
+
+double get_angle(const std::array<int, 2>& vector)
+{
+    return std::atan2(double(vector[1]), double(vector[0])) * 180.0 / std::numbers::pi;
+}
+
+int get_rotation(const int& first_angle, const int& second_angle)
+{
+    int r = second_angle - first_angle;
+    if (r < -180)
+    {
+        r += 360;
+    }
+    else if (r > 180)
+    {
+        r -= 360;
+    }
+    return r;
+}
+
+std::array<int, 2> get_center(const std::array<std::array<int, 2>, 2>& frame)
+{
+    return {(frame[0][0] + frame[1][0]) / 2, (frame[0][1] + frame[1][1]) / 2};
+}
+
+void extend_frame(std::array<std::array<int, 2>, 2>& frame,
+    const std::array<int, 2>& point)
+{
+    if (frame[0][0] > point[0])
+    {
+        frame[0][0] = point[0];
+    }
+    if (frame[0][1] > point[1])
+    {
+        frame[0][1] = point[1];
+    }
+    if (frame[1][0] < point[0])
+    {
+        frame[1][0] = point[0];
+    }
+    if (frame[1][1] < point[1])
+    {
+        frame[1][1] = point[1];
+    }
 }

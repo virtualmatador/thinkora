@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <filesystem>
 #include <fstream>
 #include <memory>
 #include <vector>
@@ -6,6 +7,7 @@
 #include "json.h"
 
 #include "board.h"
+#include "convex.h"
 #include "circle.h"
 #include "line.h"
 #include "point.h"
@@ -17,24 +19,14 @@ Ocr::Ocr(Board* board)
     : run_{true}
     , board_{board}
 {
-    std::fstream read_shape_patterns("pattern/shapes.json");
-    jsonio::json json_shape_patterns;
-    read_shape_patterns >> json_shape_patterns;
-    if (json_shape_patterns.completed())
+    shape_patterns_ = read_patterns("pattern/shape/");
+    for (auto& dir: std::filesystem::directory_iterator("pattern/character/"))
     {
-        if (json_shape_patterns.is_array())
+        if (dir.is_directory())
         {
-            for (const auto& json_shape_pattern: json_shape_patterns.get_array())
-            {
-                shape_patterns_.emplace_back(json_shape_pattern.get_object());
-            }
+            char_patterns_[dir.path().filename()] = read_patterns(dir.path());
         }
     }
-    else
-    {
-        throw std::runtime_error("TODO");
-    }
-    
     thread_ = std::thread([this]()
     {
         while (run_)
@@ -45,6 +37,22 @@ Ocr::Ocr(Board* board)
             }
         }
     });
+}
+
+std::vector<Pattern> Ocr::read_patterns(std::filesystem::path path)
+{
+    std::vector<Pattern> patterns;
+    for (auto& json_file: std::filesystem::directory_iterator(path))
+    {
+        std::fstream json_reader(json_file.path());
+        jsonio::json json_pattern;
+        json_reader >> json_pattern;
+        if (json_pattern.completed())
+        {
+            patterns.emplace_back(json_file.path().filename(), json_pattern);
+        }
+    }
+    return patterns;
 }
 
 Ocr::~Ocr()
@@ -74,7 +82,8 @@ bool Ocr::get_sketch()
         }
     }
     auto time = std::chrono::steady_clock::now();
-    auto sketches = board_->list_sketches(job);
+    std::array<std::array<int, 2>, 2> frame = job->frame_;
+    auto sketches = board_->list_sketches(job, frame);
     std::chrono::steady_clock::time_point recent =
         std::chrono::steady_clock::time_point::min();
     for (const auto& sketch: sketches)
@@ -90,7 +99,7 @@ bool Ocr::get_sketch()
     {
         return true;
     }
-    else if (sketches.size() == 0 || process(job, sketches))
+    else if (sketches.size() == 0 || process(job, sketches, frame))
     {
         std::lock_guard<std::mutex> lock{jobs_lock_};
         jobs_.pop_front();
@@ -98,30 +107,22 @@ bool Ocr::get_sketch()
     return false;
 }
 
-bool Ocr::process(const Job* job, std::vector<Sketch>& sketches)
+bool Ocr::process(const Job* job, std::vector<Sketch>& sketches,
+    const std::array<std::array<int, 2>, 2>& frame)
 {
-    std::vector<Shape*> elements;
+    std::vector<std::vector<Convex>> elements;
     for (auto& sketch: sketches)
     {
-        if (sketch.get_points().size() == 1)
-        {
-            Point* point =
-                new Point{job->line_width_, job->color_, job->style_};
-            point->set_point(sketch.get_points().front());
-            elements.emplace_back(point);
-        }
-        else
-        {
-            simplify(sketch, elements);
-        }
+        simplify(sketch, frame, elements);
     }
-    std::vector<Shape*> shapes = combine(elements);
+    std::vector<Shape*> shapes = match(job, elements);
     // modify using sticky points
     // create sticky points
     return board_->replace_sketches(job, sketches, shapes);
 }
 
-void Ocr::simplify(Sketch& sketch, std::vector<Shape*>& elements)
+void Ocr::simplify(Sketch& sketch, const std::array<std::array<int, 2>, 2>&
+        frame, std::vector<std::vector<Convex>>& elements)
 {
     auto& points = sketch.get_points();
     double tolerance = get_diameter(sketch.get_frame()) / 24.0;
@@ -158,30 +159,54 @@ void Ocr::simplify(Sketch& sketch, std::vector<Shape*>& elements)
             points.erase(points.begin() + std::get<2>(redondent));
         }
     } while (redondents.size() > 0);
-    /*
-    Check Segment
-        Check convex subsegments
-            Start: {region, angle}
-            End: {region, angle}
-            End - Start: {length, angle}
-            End.angle - Start.angle
-            Max-Frame
-    */
-    for (std::size_t i = 1; i < points.size(); ++i)
-    {
-        Line* line = new Line(sketch.get_line_width(), sketch.get_color(),
-            sketch.get_style());
-        line->set_line({points[i - 1], points[i]});
-        elements.emplace_back(line);
-    }
+    elements.emplace_back(Convex::extract(points, frame));
 }
 
-std::vector<Shape*> Ocr::combine(std::vector<Shape*>& elements)
+std::vector<Shape*> Ocr::match(const Job* job, std::vector<std::vector<Convex>>
+    & elements)
 {
     std::vector<Shape*> shapes;
-    for (const auto& element: elements)
+    double min_difference = 0.5;
+    const std::string* character = nullptr;
+    for (const auto& [language, patterns]: char_patterns_)
     {
-        shapes.emplace_back(element);
+        for (const auto& pattern: patterns)
+        {
+            double difference = pattern.match(elements);
+            if (min_difference > difference)
+            {
+                min_difference = difference;
+                character = &pattern.get_character();
+            }
+        }
+    }
+    for (const auto& pattern: shape_patterns_)
+    {
+        double difference = pattern.match(elements);
+        if (min_difference > difference)
+        {
+            min_difference = difference;
+            character = &pattern.get_character();
+        }
+    }
+    if (!character)
+    {
+        for (const auto& element: elements)
+        {
+            //Polyline* pl = new Polyline(element);
+            //shapes.emplace_back(pl);
+        }
+    }
+    else if (*character == "circle")
+    {
+        Circle* circle = new Circle(job->line_width_, job->color_, job->style_);
+        circle->set_circle(get_center(job->frame_),
+            std::pow(std::pow(get_diameter(job->frame_), 2.0) / 2.0, 0.5) / 2.0);
+        shapes.emplace_back(circle);
+    }
+    else if (*character == "A")
+    {
+
     }
     return shapes;
 }
