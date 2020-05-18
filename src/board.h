@@ -1,5 +1,5 @@
-#ifndef BOARD_H
-#define BOARD_H
+#ifndef THINKORA_SRC_BOARD_H
+#define THINKORA_SRC_BOARD_H
 
 #include <array>
 #include <cstddef>
@@ -85,4 +85,4 @@ private:
     friend class Bar;
 };
 
-#endif // BOARD_H
+#endif // THINKORA_SRC_BOARD_H

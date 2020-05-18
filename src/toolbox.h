@@ -1,5 +1,5 @@
-#ifndef TOOLBOX_H
-#define TOOLBOX_H
+#ifndef THINKORA_SRC_TOOLBOX_H
+#define THINKORA_SRC_TOOLBOX_H
 
 #include <array>
 #include <cstddef>
@@ -45,4 +45,4 @@ std::array<int, 2> get_center(const std::array<std::array<int, 2>, 2>& frame);
 void extend_frame(std::array<std::array<int, 2>, 2>& frame,
     const std::array<int, 2>& point);
 
-#endif // TOOLBOX_H
+#endif // THINKORA_SRC_TOOLBOX_H

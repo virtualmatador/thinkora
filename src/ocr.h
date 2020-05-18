@@ -1,5 +1,5 @@
-#ifndef OCR_H
-#define OCR_H
+#ifndef THINKORA_SRC_OCR_H
+#define THINKORA_SRC_OCR_H
 
 #include <array>
 #include <atomic>
@@ -41,8 +41,8 @@ private:
         const std::array<std::array<int, 2>, 2>& frame);
     void simplify(Sketch& sketch, const std::array<std::array<int, 2>, 2>&
         frame, std::vector<std::vector<Convex>>& elements);
-    std::vector<Shape*> match(const Job* job, std::vector<std::vector<Convex>>
-        & elements);
+    std::vector<Shape*> match(const Job* job, const std::array<std::array
+        <int, 2>, 2>& frame, std::vector<std::vector<Convex>>& elements);
 
 private:
     std::thread thread_;
@@ -54,4 +54,4 @@ private:
     std::map<std::string, std::vector<Pattern>> char_patterns_;
 };
 
-#endif // OCR_H
+#endif // THINKORA_SRC_OCR_H

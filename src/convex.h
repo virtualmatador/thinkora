@@ -1,5 +1,5 @@
-#ifndef CONVEX_H
-#define CONVEX_H
+#ifndef THINKORA_SRC_CONVEX_H
+#define THINKORA_SRC_CONVEX_H
 
 #include <array>
 #include <vector>
@@ -43,4 +43,4 @@ private:
     int n_e_;
 };
 
-#endif // CONVEX_H
+#endif // THINKORA_SRC_CONVEX_H

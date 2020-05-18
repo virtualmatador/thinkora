@@ -1,11 +1,11 @@
-#ifndef POINT_H
-#define POINT_H
+#ifndef THINKORA_SRC_POINT_H
+#define THINKORA_SRC_POINT_H
 
 #include <array>
 
 #include "shape.h"
 
-class Point final: public Shape
+class Point: public Shape
 {
 public:
     using Shape::Shape;
@@ -24,4 +24,4 @@ private:
     std::array<int, 2> point_;
 };
 
-#endif // POINT_H
+#endif // THINKORA_SRC_POINT_H

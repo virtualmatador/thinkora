@@ -11,6 +11,7 @@
 #include "circle.h"
 #include "line.h"
 #include "point.h"
+#include "text.h"
 #include "toolbox.h"
 
 #include "ocr.h"
@@ -115,7 +116,7 @@ bool Ocr::process(const Job* job, std::vector<Sketch>& sketches,
     {
         simplify(sketch, frame, elements);
     }
-    std::vector<Shape*> shapes = match(job, elements);
+    std::vector<Shape*> shapes = match(job, frame, elements);
     // modify using sticky points
     // create sticky points
     return board_->replace_sketches(job, sketches, shapes);
@@ -162,8 +163,8 @@ void Ocr::simplify(Sketch& sketch, const std::array<std::array<int, 2>, 2>&
     elements.emplace_back(Convex::extract(points, frame));
 }
 
-std::vector<Shape*> Ocr::match(const Job* job, std::vector<std::vector<Convex>>
-    & elements)
+std::vector<Shape*> Ocr::match(const Job* job, const std::array<std::array
+    <int, 2>, 2>& frame, std::vector<std::vector<Convex>>& elements)
 {
     std::vector<Shape*> shapes;
     double min_difference = 0.5;
@@ -200,13 +201,19 @@ std::vector<Shape*> Ocr::match(const Job* job, std::vector<std::vector<Convex>>
     else if (*character == "circle")
     {
         Circle* circle = new Circle(job->line_width_, job->color_, job->style_);
-        circle->set_circle(get_center(job->frame_),
-            std::pow(std::pow(get_diameter(job->frame_), 2.0) / 2.0, 0.5) / 2.0);
+        circle->set_circle(get_center(frame),
+            std::pow(std::pow(get_diameter(frame), 2.0) / 2.0, 0.5) / 2.0);
         shapes.emplace_back(circle);
     }
     else if (*character == "A")
     {
-
+        Text* text = new Text(job->line_width_, job->color_, job->style_);
+        auto region = Cairo::Region::create();
+        auto dc = board_->get_window()->begin_draw_frame(region);
+        text->set_text(dc->get_cairo_context(), frame[0],
+            frame[1][1] - frame[0][1], "A");
+        board_->get_window()->end_draw_frame(dc);
+        shapes.emplace_back(text);
     }
     return shapes;
 }

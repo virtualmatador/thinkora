@@ -1,5 +1,5 @@
-#ifndef SHAPE_H
-#define SHAPE_H
+#ifndef THINKORA_SRC_SHAPE_H
+#define THINKORA_SRC_SHAPE_H
 
 #include <array>
 #include <fstream>
@@ -17,6 +17,7 @@ public:
         POINT,
         LINE,
         CIRCLE,
+        TEXT,
     };
     enum class Style
     {
@@ -72,4 +73,4 @@ private:
 std::ostream& operator<<(std::ostream& os, const Shape& shape);
 std::istream& operator>>(std::istream& is, Shape& shape);
 
-#endif // SHAPE_H
+#endif // THINKORA_SRC_SHAPE_H

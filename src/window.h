@@ -1,5 +1,5 @@
-#ifndef WINDOW_H
-#define WINDOW_H
+#ifndef THINKORA_SRC_WINDOW_H
+#define THINKORA_SRC_WINDOW_H
 
 #include <gtkmm.h>
 
@@ -19,4 +19,4 @@ private:
     Board board_;
 };
 
-#endif // WINDOW_H
+#endif // THINKORA_SRC_WINDOW_H

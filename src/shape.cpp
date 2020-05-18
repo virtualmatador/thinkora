@@ -6,6 +6,7 @@
 #include "line.h"
 #include "point.h"
 #include "sketch.h"
+#include "text.h"
 
 #include "shape.h"
 
@@ -25,6 +26,9 @@ Shape* Shape::create_shape(const Shape::Type& type)
         break;
     case Shape::Type::CIRCLE:
         shape = new Circle;
+        break;
+    case Shape::Type::TEXT:
+        shape = new Text;
         break;
     default:
         shape = nullptr;
@@ -70,6 +74,7 @@ const std::array<std::array<int, 2>, 2>& Shape::get_frame() const
 void Shape::draw(const Cairo::RefPtr<Cairo::Context>& cr,
     const int& zoom_delta, const std::array<int, 2>& pad) const
 {
+    cr->begin_new_path();
     cr->set_source_rgba(color_.get_red(), color_.get_green(),
         color_.get_blue(), color_.get_alpha());
     cr->set_line_width(line_width_);
@@ -97,7 +102,7 @@ void Shape::write(std::ostream& os) const
 
 void Shape::read(std::istream& is)
 {
-    is >> line_width_ ;
+    is >> line_width_;
     double color;
     is >> color;
     color_.set_red(color);

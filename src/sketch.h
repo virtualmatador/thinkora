@@ -1,5 +1,5 @@
-#ifndef SKETCH_H
-#define SKETCH_H
+#ifndef THINKORA_SRC_SKETCH_H
+#define THINKORA_SRC_SKETCH_H
 
 #include <array>
 #include <chrono>
@@ -8,7 +8,7 @@
 
 #include "shape.h"
 
-class Sketch final: public Shape
+class Sketch: public Shape
 {
 public:
     using Shape::Shape;
@@ -33,4 +33,4 @@ private:
     std::chrono::steady_clock::time_point birth_;
 };
 
-#endif // SKETCH_H
+#endif // THINKORA_SRC_SKETCH_H

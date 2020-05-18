@@ -1,16 +1,17 @@
-#ifndef THINKORA_SRC_LINE_H
-#define THINKORA_SRC_LINE_H
+#ifndef THINKORA_SRC_TEXT_H
+#define THINKORA_SRC_TEXT_H
 
 #include <array>
-#include <vector>
+#include <string>
 
 #include "shape.h"
 
-class Line: public Shape
+class Text: public Shape
 {
 public:
     using Shape::Shape;
-    void set_line(const std::array<std::array<int, 2>, 2>& points);
+    void set_text(const Cairo::RefPtr<Cairo::Context>& cr, const std::array
+        <int, 2>& position, const int& height, const std::string& text);
 
 public:
     Type get_type() const override;
@@ -22,7 +23,8 @@ private:
     void read_details(std::istream& is);
 
 private:
-    std::array<std::array<int, 2>, 2> points_;
+    std::string text_;
+
 };
 
-#endif // THINKORA_SRC_LINE_H
+#endif // THINKORA_SRC_TEXT_H

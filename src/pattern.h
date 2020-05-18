@@ -1,5 +1,5 @@
-#ifndef PATTERN_H
-#define PATTERN_H
+#ifndef THINKORA_SRC_PATTERN_H
+#define THINKORA_SRC_PATTERN_H
 
 #include <array>
 #include <vector>
@@ -23,4 +23,4 @@ private:
     std::vector<std::vector<Convex>> segments_;
 };
 
-#endif // PATTERN_H
+#endif // THINKORA_SRC_PATTERN_H

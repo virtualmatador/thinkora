@@ -1,5 +1,5 @@
-#ifndef BAR_H
-#define BAR_H
+#ifndef THINKORA_SRC_BAR_H
+#define THINKORA_SRC_BAR_H
 
 #include <gtkmm.h>
 
@@ -48,4 +48,4 @@ private:
     friend class Board;
 };
 
-#endif // BAR_H
+#endif // THINKORA_SRC_BAR_H

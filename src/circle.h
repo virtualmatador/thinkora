@@ -1,11 +1,11 @@
-#ifndef CIRCLE_H
-#define CIRCLE_H
+#ifndef THINKORA_SRC_CIRCLE_H
+#define THINKORA_SRC_CIRCLE_H
 
 #include <array>
 
 #include "shape.h"
 
-class Circle final: public Shape
+class Circle: public Shape
 {
 public:
     using Shape::Shape;
@@ -24,4 +24,4 @@ private:
     std::array<std::array<int, 2>, 2> circle_;
 };
 
-#endif // CIRCLE_H
+#endif // THINKORA_SRC_CIRCLE_H
