@@ -107,8 +107,7 @@ Convex::Convex(const jsonio::json& json)
     {
         d_a_b_ = false;
     }
-    d_x_ = json["d_x"].get_double();
-    d_y_ = json["d_y"].get_double();
+    d_l_ = json["d_l"].get_double();
     d_r_ = json["d_r"].get_long();
     f_x_ = json["f_x"].get_double();
     f_y_ = json["f_y"].get_double();
@@ -134,40 +133,35 @@ Convex::Convex(const std::vector<std::array<int, 2>>& points,
     const std::array<std::array<int, 2>, 2>& convex_frame,
     const std::array<std::array<int, 2>, 2>& frame)
 {
+    auto diameter = get_diameter(frame);
     b_a_b_ = true;
     b_a_ = get_angle(
     {
         points[begin + 1][0] - points[begin][0],
         points[begin + 1][1] - points[begin][1]
     });
-    b_x_ = double(points[begin][0] - frame[0][0]) /
-        double(frame[1][0] - frame[0][0]);
-    b_y_ = double(points[begin][1] - frame[0][1]) /
-        double(frame[1][1] - frame[0][1]);
+    b_x_ = double(points[begin][0] - frame[0][0]) / diameter;
+    b_y_ = double(points[begin][1] - frame[0][1]) / diameter;
     e_a_b_ = true;
     e_a_ = get_angle(
     {
         points[end - 2][0] - points[end - 1][0],
         points[end - 2][1] - points[end - 1][1]
     });
-    e_x_ = double(points[end - 1][0] - frame[0][0]) /
-        double(frame[1][0] - frame[0][0]);
-    e_y_ = double(points[end - 1][1] - frame[0][1]) /
-        double(frame[1][1] - frame[0][1]);
+    e_x_ = double(points[end - 1][0] - frame[0][0]) / diameter;
+    e_y_ = double(points[end - 1][1] - frame[0][1]) / diameter;
     d_a_b_ = true;
     d_a_ = get_angle(
     {
         points[end - 1][0] - points[begin][0],
         points[end - 1][1] - points[begin][1]
     });
-    double d = get_distance(points[end - 1], points[begin]);
-    d_x_ = d / double(frame[1][0] - frame[0][0]);
-    d_y_ = d / double(frame[1][1] - frame[0][1]);
+    d_l_ = get_distance(points[end - 1], points[begin]) / diameter;
     d_r_ = d_r;
-    f_x_ = double(convex_frame[1][0] - convex_frame[0][0]) /
-        double(frame[1][0] - frame[0][0]);
-    f_y_ = double(convex_frame[1][1] - convex_frame[0][1]) /
-        double(frame[1][1] - frame[0][1]);
+    f_x_ = double(convex_frame[1][0] - convex_frame[0][0] + 1) /
+        double(frame[1][0] - frame[0][0] + 1);
+    f_y_ = double(convex_frame[1][1] - convex_frame[0][1] + 1) /
+        double(frame[1][1] - frame[0][1] + 1);
     n_b_ = n_e_ = end - begin;
 }
 
@@ -206,9 +200,8 @@ double Convex::compare(const Convex& convex) const
         }
         difference += std::min(180.0, double(std::abs(d_r_ - convex.d_r_))) /
             180.0;
-        difference += std::abs(d_x_ - convex.d_x_);
-        difference += std::abs(d_y_ - convex.d_y_);
-        count += 3;
+        difference += std::abs(d_l_ - convex.d_l_);
+        count += 2;
         difference += std::abs(f_x_ - convex.f_x_);
         difference += std::abs(f_y_ - convex.f_y_);
         count += 2;

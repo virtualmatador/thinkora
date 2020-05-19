@@ -194,7 +194,7 @@ std::vector<Shape*> Ocr::match(const Job* job, const std::array<std::array
     {
         for (const auto& element: elements)
         {
-            //Polyline* pl = new Polyline(element);
+            // TODO Polyline* pl = new Polyline(element);
             //shapes.emplace_back(pl);
         }
     }
@@ -205,13 +205,14 @@ std::vector<Shape*> Ocr::match(const Job* job, const std::array<std::array
             std::pow(std::pow(get_diameter(frame), 2.0) / 2.0, 0.5) / 2.0);
         shapes.emplace_back(circle);
     }
-    else if (*character == "A")
+    else
     {
+        // TODO Combine with text in left if size and position and style match
         Text* text = new Text(job->line_width_, job->color_, job->style_);
         auto region = Cairo::Region::create();
         auto dc = board_->get_window()->begin_draw_frame(region);
         text->set_text(dc->get_cairo_context(), frame[0],
-            frame[1][1] - frame[0][1], "A");
+            frame[1][1] - frame[0][1], *character);
         board_->get_window()->end_draw_frame(dc);
         shapes.emplace_back(text);
     }

@@ -34,8 +34,7 @@ private:
     double e_y_;
     bool d_a_b_;
     int d_a_;
-    double d_x_;
-    double d_y_;
+    double d_l_;
     int d_r_;
     double f_x_;
     double f_y_;
