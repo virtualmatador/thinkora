@@ -35,17 +35,25 @@ double Pattern::match(const std::vector<std::vector<Convex>>& elements) const
             return 1.0;
         }
     }
-    double difference = 0;
+    double total_difference = 0;
     std::size_t convex_count = 0;
     for (std::size_t i = 0; i < segments_.size(); ++i)
     {
         for (std::size_t j = 0; j < segments_[i].size(); ++j)
         {
-            difference += segments_[i][j].compare(elements[i][j]);
+            auto difference = segments_[i][j].compare(elements[i][j]);
+            if (difference < Convex::treshold_)
+            {
+                total_difference += difference;
+            }
+            else
+            {
+                return 1.0;
+            }
         }
         convex_count += segments_[i].size();
     }
-    return difference / convex_count;
+    return total_difference / convex_count;
 }
 
 const std::string& Pattern::get_character() const

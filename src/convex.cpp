@@ -2,6 +2,8 @@
 
 #include "convex.h"
 
+const double Convex::treshold_ = 0.4;
+
 std::vector<Convex> Convex::extract(const std::vector<std::array<int, 2>>&
     points, const std::array<std::array<int, 2>, 2>& frame)
 {
@@ -179,7 +181,7 @@ double Convex::compare(const Convex& convex) const
         if (b_a_b_)
         {
             difference += double(std::abs(get_rotation(b_a_, convex.b_a_))) /
-                180.0;
+                90.0;
             difference += std::abs(b_x_ - convex.b_x_);
             difference += std::abs(b_y_ - convex.b_y_);
             count += 3;
@@ -187,7 +189,7 @@ double Convex::compare(const Convex& convex) const
         if (e_a_b_)
         {
             difference += double(std::abs(get_rotation(e_a_, convex.e_a_))) /
-                180.0;
+                90.0;
             difference += std::abs(e_x_ - convex.e_x_);
             difference += std::abs(e_y_ - convex.e_y_);
             count += 3;
@@ -195,11 +197,10 @@ double Convex::compare(const Convex& convex) const
         if (d_a_b_)
         {
             difference += double(std::abs(get_rotation(d_a_, convex.d_a_))) /
-                180.0;
+                90.0;
             count += 1;
         }
-        difference += std::min(180.0, double(std::abs(d_r_ - convex.d_r_))) /
-            180.0;
+        difference += double(std::abs(d_r_ - convex.d_r_)) / 90.0;
         difference += std::abs(d_l_ - convex.d_l_);
         count += 2;
         difference += std::abs(f_x_ - convex.f_x_);
