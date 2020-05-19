@@ -24,7 +24,7 @@ private:
 
 private:
     std::string text_;
-    int height_;
+    double height_;
 };
 
 #endif // THINKORA_SRC_TEXT_H

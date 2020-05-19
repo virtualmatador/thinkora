@@ -6,10 +6,11 @@ void Text::set_text(const Cairo::RefPtr<Cairo::Context>& cr, const std::array
     <int, 2>& position, const int& height, const std::string& text)
 {
     text_ = text;
-    height_ = height * 1.3;
+    double font_size = height * 1.25;
     Cairo::TextExtents extents;
-    cr->set_font_size(height_);
+    cr->set_font_size(font_size);
     cr->get_text_extents(text_, extents);
+    height_ = font_size / extents.height;
     frame_ =
     {
         position,
@@ -30,7 +31,7 @@ void Text::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
         transform(frame_[0], zoom_delta, pad),
         transform(frame_[1], zoom_delta, pad),
     };
-    cr->set_font_size(height_);
+    cr->set_font_size(height_ * (frame[1][1] - frame[0][1]));
     cr->move_to(frame[0][0], frame[1][1]);
     cr->show_text(text_);
 }
