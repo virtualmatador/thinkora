@@ -147,8 +147,8 @@ Convex::Convex(const std::vector<std::array<int, 2>>& points,
     e_a_b_ = true;
     e_a_ = get_angle(
     {
-        points[end - 1][0] - points[end - 2][0],
-        points[end - 1][1] - points[end - 2][1]
+        points[end - 2][0] - points[end - 1][0],
+        points[end - 2][1] - points[end - 1][1]
     });
     e_x_ = double(points[end - 1][0] - frame[0][0]) /
         double(frame[1][0] - frame[0][0]);

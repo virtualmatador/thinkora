@@ -15,8 +15,11 @@ void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
 
 void Sketch::add_point(const std::array<int, 2>& point)
 {
-    points_.emplace_back(point);
-    extend_frame(frame_, point);
+    if (points_.empty() || points_.back() != point)
+    {
+        points_.emplace_back(point);
+        extend_frame(frame_, point);
+    }
 }
 
 void Sketch::finalize()

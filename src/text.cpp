@@ -5,15 +5,16 @@
 void Text::set_text(const Cairo::RefPtr<Cairo::Context>& cr, const std::array
     <int, 2>& position, const int& height, const std::string& text)
 {
+    text_ = text;
+    height_ = height * 1.3;
     Cairo::TextExtents extents;
-    cr->set_font_size(height);
-    cr->get_text_extents(text, extents);
+    cr->set_font_size(height_);
+    cr->get_text_extents(text_, extents);
     frame_ =
     {
         position,
-        position[0] + int(extents.height), position[1] + int(extents.width)
+        position[0] + int(extents.width), position[1] + int(extents.height)
     };
-    text_ = text;
 }
 
 Shape::Type Text::get_type() const
@@ -29,7 +30,7 @@ void Text::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
         transform(frame_[0], zoom_delta, pad),
         transform(frame_[1], zoom_delta, pad),
     };
-    cr->set_font_size(frame[1][1] - frame[0][1]);
+    cr->set_font_size(height_);
     cr->move_to(frame[0][0], frame[1][1]);
     cr->show_text(text_);
 }
@@ -38,7 +39,7 @@ void Text::write_dtails(std::ostream& os) const
 {
     os << text_.size();
     os.write(text_.c_str(), text_.size());
-    os << std::endl;
+    os << ' ' << height_ << std::endl;
 }
 
 void Text::read_details(std::istream& is)
@@ -49,4 +50,5 @@ void Text::read_details(std::istream& is)
     text_.reserve(size);
     std::copy_n(std::istreambuf_iterator(is), size, std::back_inserter(text_));
     is.ignore(1);
+    is >> height_;
 }

@@ -167,7 +167,7 @@ std::vector<Shape*> Ocr::match(const Job* job, const std::array<std::array
     <int, 2>, 2>& frame, std::vector<std::vector<Convex>>& elements)
 {
     std::vector<Shape*> shapes;
-    double min_difference = 0.5;
+    double min_difference = 0.4;
     const std::string* character = nullptr;
     for (const auto& [language, patterns]: char_patterns_)
     {
