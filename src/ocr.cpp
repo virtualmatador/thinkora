@@ -96,7 +96,7 @@ bool Ocr::get_sketch()
     }
     if (recent != std::chrono::steady_clock::time_point::min() &&
         (recent == std::chrono::steady_clock::time_point::max() ||
-        time - recent < std::chrono::operator""s(1)))
+        time - recent < std::chrono::operator""ms(delay_ms_)))
     {
         return true;
     }

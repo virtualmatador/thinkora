@@ -30,6 +30,9 @@ public:
 class Ocr
 {
 public:
+    static const int delay_ms_ = 1500;
+
+public:
     Ocr(Board* board);
     ~Ocr();
     std::vector<Pattern> read_patterns(std::filesystem::path path);
