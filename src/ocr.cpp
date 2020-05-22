@@ -34,7 +34,7 @@ Ocr::Ocr(Board* board)
         {
             if (get_sketch())
             {
-                std::this_thread::sleep_for(std::chrono::operator""ms(100));
+                std::this_thread::sleep_for(std::chrono::operator""ms(delay_ms_ / 4));
             }
         }
     });
