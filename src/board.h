@@ -13,6 +13,7 @@
 
 #include "ocr.h"
 #include "sketch.h"
+#include "shape.h"
 
 class Bar;
 
@@ -26,9 +27,6 @@ public:
     ~Board();
     bool check_modified();
     void redraw(bool pass_on);
-    void list_sketches(Job* job) const;
-    bool replace_sketches(const Job* job, const std::vector<Sketch>& sketches,
-        const std::vector<Shape*>& shapes);
 
 private:
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;

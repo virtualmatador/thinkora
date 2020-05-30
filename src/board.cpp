@@ -77,14 +77,17 @@ void Board::redraw(bool pass_on)
     queue_draw();
 }
 
+/*
+
 void Board::list_sketches(Job* job) const
 {
     job->reset_outer_frame();
     std::vector<Sketch> sketches;
     sketches_lock_.lock();
     cleared_ = false;
-    push_sketches(job, [&](const Sketch& sketch)
+    push_sketches(job, [&](Sketch& sketch)
     {
+        sketch.set_listed(true);
         sketches.emplace_back(sketch);
         job->inflate(sketch.get_frame());
     });
@@ -96,7 +99,7 @@ void Board::list_sketches(Job* job) const
     sketches_lock_.unlock();
     job->set_sketches(std::move(sketches));
 }
-/*
+
 bool Board::replace_sketches(const Job* job, const std::vector<Sketch>& sketches,
     const std::vector<Shape*>& shapes)
 {
@@ -192,6 +195,7 @@ void Board::clear_map(Map& map)
     map.clear();
 }
 
+/*
 void Board::push_sketches(const Job* job,
     std::function<void(Sketch&)> pusher) const
 {
@@ -219,6 +223,7 @@ void Board::push_sketches(const Job* job,
         }
     }
 }
+*/
 
 void Board::add_reference(Map& map, const int& zoom, Shape* shape)
 {
@@ -333,7 +338,6 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
             sketch_ = new Sketch{bar_->marker_width_,
                 bar_->marker_color_, bar_->marker_style_};
             sketch_->set_sketch();
-            sketch_->set_birth(std::chrono::steady_clock::time_point::max());
             sketch_->add_point(mouse_position_);
             sketches_lock_.lock();
             add_reference(sketches_, zoom_, sketch_);
@@ -389,12 +393,12 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         {
             mouse_button_ = 0;
             sketches_lock_.lock();
-            sketch_->finalize();
             sketch_->set_birth(std::chrono::steady_clock::now());
             auto frame = sketch_->get_frame();
             sketches_lock_.unlock();
-            ocr_.add({zoom_, frame, sketch_->get_line_width(),
-                sketch_->get_color(), sketch_->get_style()});
+            // TODO
+            //ocr_.add({zoom_, frame, sketch_->get_line_width(),
+                //sketch_->get_color(), sketch_->get_style()});
             sketch_ = nullptr;
             modified_ = true;
             redraw(true);
@@ -580,8 +584,11 @@ void Board::open_map(std::istream& is, Map& map, const bool& sketch)
                 {
                     static_cast<Sketch*>(shape)->set_birth(
                         std::chrono::steady_clock::now());
+                    // TODO
+                    /*
                     ocr_.add({zoom, shape->get_frame(), shape->get_line_width(),
                         shape->get_color(), shape->get_style()});
+                        */
                 }
             }
         }

@@ -2,38 +2,43 @@
 
 #include "sketch.h"
 
-void Sketch::set_sketch()
+Sketch::~Sketch()
 {
-    frame_ = {std::numeric_limits<int>::max(), std::numeric_limits<int>::max(),
-        std::numeric_limits<int>::min(), std::numeric_limits<int>::min()};
+    // TODO set job->sketch nullptr
 }
 
-void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
+void Sketch::set_sketch()
 {
-    birth_ = birth;
+    frame_ =
+    {
+        std::numeric_limits<int>::max(), std::numeric_limits<int>::max(),
+        std::numeric_limits<int>::min(), std::numeric_limits<int>::min()
+    };
 }
 
 void Sketch::add_point(const std::array<int, 2>& point)
 {
     if (points_.empty() || points_.back() != point)
     {
-        points_.emplace_back(point);
+        if (points_.size() < 2 ||
+            (points_[points_.size() - 1][0] - points_[points_.size() - 2][0]) *
+            (point[1] - points_[points_.size() - 1][1]) !=
+            (points_[points_.size() - 1][1] - points_[points_.size() - 2][1]) *
+            (point[0] - points_[points_.size() - 1][0]))
+        {
+            points_.emplace_back(point);
+        }
+        else
+        {
+            points_.back() = point;
+        }
         extend_frame(frame_, point);
     }
 }
 
-void Sketch::finalize()
+void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
 {
-    for (std::size_t i = 2; i < points_.size(); ++i)
-    {
-        if ((points_[i - 1][0] - points_[i - 2][0]) *
-            (points_[i][1] - points_[i - 1][1]) ==
-            (points_[i - 1][1] - points_[i - 2][1]) *
-            (points_[i][0] - points_[i - 1][0]))
-        {
-            points_.erase(points_.begin() + (i - 1));
-        }
-    }
+    birth_ = birth;
 }
 
 std::vector<std::array<int, 2>>& Sketch::get_points()

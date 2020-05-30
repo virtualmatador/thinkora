@@ -16,9 +16,8 @@ public:
     Pattern(const jsonio::json& pattern);
     ~Pattern();
     double match(const std::vector<std::vector<Convex>>& elements) const;
+    bool is_simple() const;
     const std::string& get_character(std::size_t choice) const;
-
-private:
 
 private:
     std::vector<std::vector<Convex>> segments_;

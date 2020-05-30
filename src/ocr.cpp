@@ -7,11 +7,6 @@
 #include "json.h"
 
 #include "board.h"
-#include "convex.h"
-#include "circle.h"
-#include "line.h"
-#include "point.h"
-#include "text.h"
 #include "toolbox.h"
 
 #include "ocr.h"
@@ -66,11 +61,11 @@ Ocr::~Ocr()
 void Ocr::add(const Job& job)
 {
     std::lock_guard<std::mutex> lock{jobs_lock_};
-    jobs_.emplace_back(job);
+    // TODO jobs_.emplace_back(job);
 }
 
 bool Ocr::get_sketch()
-{
+{/*
     Job* job;
     {
         std::lock_guard<std::mutex> lock{jobs_lock_};
@@ -80,6 +75,21 @@ bool Ocr::get_sketch()
         }
         else
         {
+            // TODO check all partial_jobs can be deleted from board
+            while (!partial_jobs_.empty())
+            {
+                job = &partial_jobs_.front();
+                job->choice_ = std::size_t(-1);
+                if (board_->replace_sketches(job, nullptr, job->get_result()))
+                {
+                    partial_jobs_.pop_front();
+                }
+                else
+                {
+                    std::lock_guard<std::mutex> lock{jobs_lock_};
+                    jobs_.splice(jobs_.end(), partial_jobs_, partial_jobs_.begin());
+                }
+            }
             return true;
         }
     }
@@ -95,49 +105,49 @@ bool Ocr::get_sketch()
         }
     }
     if (recent == std::chrono::steady_clock::time_point::min() ||
-        (recent != std::chrono::steady_clock::time_point::max() &&
-        time - recent > std::chrono::operator""ms(delay_ms_)))
+        time - recent > std::chrono::operator""ms(delay_ms_))
     {
         job->process();
-        std::lock_guard<std::mutex> lock{jobs_lock_};
-        jobs_.pop_front();
+        if (job->is_simple())
+        {
+            job->choice_ = 0;
+            if (board_->replace_sketches(job, nullptr, job->get_result()))
+            {
+                std::lock_guard<std::mutex> lock{jobs_lock_};
+                jobs_.pop_front();
+            }
+        }
+        else if (auto match = combine(job); match != partial_jobs_.end())
+        {
+            if (board_->replace_sketches(job, &(*match), job->get_result()))
+            {
+                partial_jobs_.erase(match);
+                std::lock_guard<std::mutex> lock{jobs_lock_};
+                jobs_.pop_front();
+            }
+            else
+            {
+                std::lock_guard<std::mutex> lock{jobs_lock_};
+                jobs_.splice(jobs_.end(), partial_jobs_, match);
+            }
+        }
+        else
+        {
+            std::lock_guard<std::mutex> lock{jobs_lock_};
+            partial_jobs_.splice(partial_jobs_.end(), jobs_, jobs_.begin());
+        }
         return false;
     }
-    //board_->replace_sketches(job, sketches, shapes)
-
     // TODO Combine with text in left if size and position and style match
     // Choose between lowercase and uppercase
     // Combine . "
     // modify using sticky points
-    // create sticky points
+    // create sticky points*/
     return true;
 }
 
-/*
-    if (!character)
-    {
-        for (const auto& element: elements)
-        {
-            // TODO Polyline* pl = new Polyline(element);
-            //shapes.emplace_back(pl);
-        }
-    }
-    else if (*character == "circle")
-    {
-        Circle* circle = new Circle(job->line_width_, job->color_, job->style_);
-        circle->set_circle(get_center(frame),
-            std::pow(std::pow(get_diameter(frame), 2.0) / 2.0, 0.5) / 2.0);
-        shapes.emplace_back(circle);
-    }
-    else
-    {
-        Text* text = new Text(job->line_width_, job->color_, job->style_);
-        auto region = Cairo::Region::create();
-        auto dc = board_->get_window()->begin_draw_frame(region);
-        text->set_text(dc->get_cairo_context(), frame[0],
-            frame[1][1] - frame[0][1], *character);
-        board_->get_window()->end_draw_frame(dc);
-        shapes.emplace_back(text);
-    }
-
-*/
+std::list<Job>::iterator Ocr::combine(Job* job)
+{
+    // TODO mix jobs together
+    return partial_jobs_.end();
+}

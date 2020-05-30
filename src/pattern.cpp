@@ -55,6 +55,11 @@ double Pattern::match(const std::vector<std::vector<Convex>>& elements) const
     return total_difference / convex_count;
 }
 
+bool Pattern::is_simple() const
+{
+    return results_.size() == 1;
+}
+
 const std::string& Pattern::get_character(std::size_t choice) const
 {
     return results_[choice].character_;

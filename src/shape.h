@@ -34,12 +34,14 @@ public:
 public:
     Shape();
     Shape(const int& line_width, const Gdk::RGBA& color, const Style& style);
+    virtual ~Shape();
     const int& get_line_width() const;
     const Gdk::RGBA& get_color() const;
     const Style& get_style() const;
     const std::array<std::array<int, 2>, 2>& get_frame() const;
     void draw(const Cairo::RefPtr<Cairo::Context>& cr,
         const int& zoom_delta, const std::array<int, 2>& pad) const;
+    bool match_style(const Shape* shape) const;
 
 private:
     void write(std::ostream& os) const;

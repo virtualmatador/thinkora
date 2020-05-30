@@ -30,11 +30,13 @@ public:
 
 private:
     bool get_sketch();
+    std::list<Job>::iterator combine(Job* job);
 
 private:
     std::thread thread_;
     std::atomic<bool> run_;
     std::list<Job> jobs_;
+    std::list<Job> partial_jobs_;
     std::mutex jobs_lock_;
     Board* board_;
 };

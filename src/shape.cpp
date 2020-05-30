@@ -51,6 +51,10 @@ Shape::Shape(const int& line_width, const Gdk::RGBA& color, const Style& style)
 {
 }
 
+Shape::~Shape()
+{
+}
+
 const int& Shape::get_line_width() const
 {
     return line_width_;
@@ -81,6 +85,14 @@ void Shape::draw(const Cairo::RefPtr<Cairo::Context>& cr,
     cr->set_dash(Board::dashes_[line_width_ - 1][int(style_)], 0.0);
     cr->set_line_cap(Cairo::LineCap::LINE_CAP_BUTT);
     draw_details(cr, zoom_delta, pad);
+}
+
+bool Shape::match_style(const Shape* shape) const
+{
+    return
+        line_width_ == shape->get_line_width() &&
+        color_ == shape->get_color() &&
+        style_ == shape->get_style();
 }
 
 void Shape::write(std::ostream& os) const
