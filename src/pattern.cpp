@@ -1,20 +1,19 @@
 #include "pattern.h"
 
-Pattern::Pattern(const std::string& character, const jsonio::json& pattern)
+Pattern::Pattern(const jsonio::json& pattern)
 {
-    auto length = character.find('-');
-    if (length != std::string::npos)
+    for (const auto& json_segment: pattern["in"].get_array())
     {
-        character_ = {character.begin(), character.begin() + length};
-        for (const auto& json_segment: pattern.get_array())
+        std::vector<Convex> segment;
+        for (const auto& json_convex: json_segment.get_array())
         {
-            std::vector<Convex> segment;
-            for (const auto& json_convex: json_segment.get_array())
-            {
-                segment.emplace_back(json_convex.get_object());
-            }
-            segments_.emplace_back(segment);
+            segment.emplace_back(json_convex.get_object());
         }
+        segments_.emplace_back(segment);
+    }
+    for (const auto& json_result: pattern["out"].get_array())
+    {
+        results_.emplace_back(json_result.get_object());
     }
 }
 
@@ -56,7 +55,7 @@ double Pattern::match(const std::vector<std::vector<Convex>>& elements) const
     return total_difference / convex_count;
 }
 
-const std::string& Pattern::get_character() const
+const std::string& Pattern::get_character(std::size_t choice) const
 {
-    return character_;
+    return results_[choice].character_;
 }

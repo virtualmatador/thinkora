@@ -26,8 +26,7 @@ public:
     ~Board();
     bool check_modified();
     void redraw(bool pass_on);
-    std::vector<Sketch> list_sketches(const Job* job,
-        std::array<std::array<int, 2>, 2>& frame) const;
+    void list_sketches(Job* job) const;
     bool replace_sketches(const Job* job, const std::vector<Sketch>& sketches,
         const std::vector<Shape*>& shapes);
 

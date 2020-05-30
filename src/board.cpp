@@ -77,17 +77,16 @@ void Board::redraw(bool pass_on)
     queue_draw();
 }
 
-std::vector<Sketch> Board::list_sketches(const Job* job,
-    std::array<std::array<int, 2>, 2>& frame) const
+void Board::list_sketches(Job* job) const
 {
+    job->reset_outer_frame();
     std::vector<Sketch> sketches;
     sketches_lock_.lock();
     cleared_ = false;
     push_sketches(job, [&](const Sketch& sketch)
     {
-        extend_frame(frame, sketch.get_frame()[0]);
-        extend_frame(frame, sketch.get_frame()[1]);
         sketches.emplace_back(sketch);
+        job->inflate(sketch.get_frame());
     });
     std::sort(sketches.begin(), sketches.end(),
         [](const auto& a, const auto& b)
@@ -95,9 +94,9 @@ std::vector<Sketch> Board::list_sketches(const Job* job,
         return a.get_birth() < b.get_birth();
     });
     sketches_lock_.unlock();
-    return sketches;
+    job->set_sketches(std::move(sketches));
 }
-
+/*
 bool Board::replace_sketches(const Job* job, const std::vector<Sketch>& sketches,
     const std::vector<Shape*>& shapes)
 {
@@ -164,7 +163,7 @@ bool Board::replace_sketches(const Job* job, const std::vector<Sketch>& sketches
     }
     return found;
 }
-
+*/
 void Board::clear_data()
 {
     shapes_lock_.lock();
@@ -198,25 +197,22 @@ void Board::push_sketches(const Job* job,
 {
     std::set<const Sketch*> listed;
     std::vector<std::array<std::array<int, 2>, 2>> jobs;
-    jobs.emplace_back(make_square(job->frame_));
+    jobs.emplace_back(job->get_frame());
     for (std::size_t i = 0; i < jobs.size(); ++i)
     {
-        auto shapes = list_shapes(sketches_, job->zoom_, regionize(jobs[i]));
+        auto shapes = list_shapes(sketches_, job->get_zoom(), regionize(jobs[i]));
         for (auto& shape: shapes)
         {
-            if (shape->get_line_width() == job->line_width_ &&
-                shape->get_color() == job->color_ &&
-                shape->get_style() == job->style_)
+            if (job->match_style(shape))
             {
                 auto sketch = static_cast<Sketch*>(shape);
                 if (listed.find(sketch) == listed.end())
                 {
-                    auto frame = make_square(sketch->get_frame());
-                    if (check_touch(jobs[i], frame))
+                    if (check_touch(jobs[i], sketch->get_frame()))
                     {
                         pusher(*sketch);
                         listed.insert(sketch);
-                        jobs.emplace_back(frame);
+                        jobs.emplace_back(sketch->get_frame());
                     }
                 }
             }

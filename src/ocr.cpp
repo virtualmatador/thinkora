@@ -20,12 +20,13 @@ Ocr::Ocr(Board* board)
     : run_{true}
     , board_{board}
 {
-    shape_patterns_ = read_patterns("pattern/shape/");
+    Job::shape_patterns_ = read_patterns("pattern/shape/");
     for (auto& dir: std::filesystem::directory_iterator("pattern/character/"))
     {
         if (dir.is_directory())
         {
-            char_patterns_[dir.path().filename()] = read_patterns(dir.path());
+            Job::char_patterns_[dir.path().filename()] =
+                read_patterns(dir.path());
         }
     }
     thread_ = std::thread([this]()
@@ -50,7 +51,7 @@ std::vector<Pattern> Ocr::read_patterns(std::filesystem::path path)
         json_reader >> json_pattern;
         if (json_pattern.completed())
         {
-            patterns.emplace_back(json_file.path().filename(), json_pattern);
+            patterns.emplace_back(json_pattern);
         }
     }
     return patterns;
@@ -83,113 +84,36 @@ bool Ocr::get_sketch()
         }
     }
     auto time = std::chrono::steady_clock::now();
-    std::array<std::array<int, 2>, 2> frame = job->frame_;
-    auto sketches = board_->list_sketches(job, frame);
+    board_->list_sketches(job);
     std::chrono::steady_clock::time_point recent =
         std::chrono::steady_clock::time_point::min();
-    for (const auto& sketch: sketches)
+    for (const auto& sketch: job->sketches_)
     {
         if (recent < sketch.get_birth())
         {
             recent = sketch.get_birth();
         }
     }
-    if (recent != std::chrono::steady_clock::time_point::min() &&
-        (recent == std::chrono::steady_clock::time_point::max() ||
-        time - recent < std::chrono::operator""ms(delay_ms_)))
+    if (recent == std::chrono::steady_clock::time_point::min() ||
+        (recent != std::chrono::steady_clock::time_point::max() &&
+        time - recent > std::chrono::operator""ms(delay_ms_)))
     {
-        return true;
-    }
-    else if (sketches.size() == 0 || process(job, sketches, frame))
-    {
+        job->process();
         std::lock_guard<std::mutex> lock{jobs_lock_};
         jobs_.pop_front();
+        return false;
     }
-    return false;
-}
+    //board_->replace_sketches(job, sketches, shapes)
 
-bool Ocr::process(const Job* job, std::vector<Sketch>& sketches,
-    const std::array<std::array<int, 2>, 2>& frame)
-{
-    std::vector<std::vector<Convex>> elements;
-    for (auto& sketch: sketches)
-    {
-        simplify(sketch, frame, elements);
-    }
-    std::vector<Shape*> shapes = match(job, frame, elements);
+    // TODO Combine with text in left if size and position and style match
+    // Choose between lowercase and uppercase
+    // Combine . "
     // modify using sticky points
     // create sticky points
-    return board_->replace_sketches(job, sketches, shapes);
+    return true;
 }
 
-void Ocr::simplify(Sketch& sketch, const std::array<std::array<int, 2>, 2>&
-        frame, std::vector<std::vector<Convex>>& elements)
-{
-    auto& points = sketch.get_points();
-    double tolerance = get_diameter(sketch.get_frame()) / 24.0;
-    std::vector<std::tuple<double, double, std::size_t>> redondents;
-    do
-    {
-        redondents.clear();
-        for (std::size_t i = 2; i < points.size(); ++i)
-        {
-            double len1, len2;
-            auto angle = get_angle(points[i - 2], points[i - 1], points[i],
-                &len1, &len2);
-            if (std::pow(std::cos(angle) + 1.0, 0.6) * std::min(len1, len2) < tolerance)
-            {
-                redondents.emplace_back(angle, len1 * len2, i - 1);
-                ++i;
-            }
-        }
-        std::sort(redondents.begin(), redondents.end(), [](auto& a, auto&b)
-        {
-            if (std::get<0>(a) == std::get<0>(b))
-            {
-                return std::get<1>(a) < std::get<1>(b);
-            }
-            return std::get<0>(a) > std::get<0>(b);
-        });
-        redondents.resize((redondents.size() + 1) / 2);
-        std::sort(redondents.begin(), redondents.end(), [](auto& a, auto&b)
-        {
-            return std::get<2>(a) > std::get<2>(b);
-        });
-        for (const auto& redondent: redondents)
-        {
-            points.erase(points.begin() + std::get<2>(redondent));
-        }
-    } while (redondents.size() > 0);
-    elements.emplace_back(Convex::extract(points, frame));
-}
-
-std::vector<Shape*> Ocr::match(const Job* job, const std::array<std::array
-    <int, 2>, 2>& frame, std::vector<std::vector<Convex>>& elements)
-{
-    std::vector<Shape*> shapes;
-    double min_difference = Convex::treshold_;
-    const std::string* character = nullptr;
-    for (const auto& [language, patterns]: char_patterns_)
-    {
-        for (const auto& pattern: patterns)
-        {
-            double difference = pattern.match(elements);
-            if (min_difference > difference)
-            {
-                min_difference = difference;
-                character = &pattern.get_character();
-            }
-        }
-    }
-    for (const auto& pattern: shape_patterns_)
-    {
-        double difference = pattern.match(elements);
-        if (min_difference > difference)
-        {
-            min_difference = difference;
-            character = &pattern.get_character();
-        }
-    }
+/*
     if (!character)
     {
         for (const auto& element: elements)
@@ -207,7 +131,6 @@ std::vector<Shape*> Ocr::match(const Job* job, const std::array<std::array
     }
     else
     {
-        // TODO Combine with text in left if size and position and style match
         Text* text = new Text(job->line_width_, job->color_, job->style_);
         auto region = Cairo::Region::create();
         auto dc = board_->get_window()->begin_draw_frame(region);
@@ -216,5 +139,5 @@ std::vector<Shape*> Ocr::match(const Job* job, const std::array<std::array
         board_->get_window()->end_draw_frame(dc);
         shapes.emplace_back(text);
     }
-    return shapes;
-}
+
+*/
