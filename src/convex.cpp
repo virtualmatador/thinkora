@@ -18,12 +18,7 @@ std::vector<Convex> Convex::extract(const std::vector<std::array<int, 2>>&
         else
         {
             std::array<std::array<int, 2>, 2> convex_frame =
-            {
-                std::min(points[end][0], points[end + 1][0]),
-                std::min(points[end][1], points[end + 1][1]),
-                std::max(points[end][0], points[end + 1][0]),
-                std::max(points[end][1], points[end + 1][1]),
-            };
+                initialize_frame(points[end], points[end + 1]);
             if (points.size() - end == 2)
             {
                 convexes.emplace_back(points, end, end + 2, 0.0, convex_frame, frame);
@@ -124,9 +119,9 @@ Convex::Convex(const std::array<int, 2>& point,
     e_a_b_ = false;
     d_a_b_ = false;
     f_x_ = double(point[0] - frame[0][0] + 1) /
-        double(frame[1][0] - frame[0][0] + 1);
+        double(frame[1][0] - frame[0][0]);
     f_y_ = double(point[1] - frame[0][1] + 1) /
-        double(frame[1][1] - frame[0][1] + 1);
+        double(frame[1][1] - frame[0][1]);
     n_b_ = n_e_ = 1;
 }
 

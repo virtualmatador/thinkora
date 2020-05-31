@@ -162,12 +162,24 @@ void extend_frame(std::array<std::array<int, 2>, 2>& frame,
     {
         frame[0][1] = point[1];
     }
-    if (frame[1][0] < point[0])
+    if (frame[1][0] < point[0] + 1)
     {
-        frame[1][0] = point[0];
+        frame[1][0] = point[0] + 1;
     }
-    if (frame[1][1] < point[1])
+    if (frame[1][1] < point[1] + 1)
     {
-        frame[1][1] = point[1];
+        frame[1][1] = point[1] + 1;
     }
+}
+
+std::array<std::array<int, 2>, 2> initialize_frame(
+    const std::array<int, 2>& point1, const std::array<int, 2>& point2)
+{
+    return
+    {
+        std::min(point1[0], point2[0]),
+        std::min(point1[1], point2[1]),
+        std::max(point1[0], point2[0]) + 1,
+        std::max(point1[1], point2[1]) + 1,
+    };
 }

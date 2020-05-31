@@ -45,4 +45,7 @@ std::array<int, 2> get_center(const std::array<std::array<int, 2>, 2>& frame);
 void extend_frame(std::array<std::array<int, 2>, 2>& frame,
     const std::array<int, 2>& point);
 
+std::array<std::array<int, 2>, 2> initialize_frame(
+    const std::array<int, 2>& point1, const std::array<int, 2>& point2);
+
 #endif // THINKORA_SRC_TOOLBOX_H
