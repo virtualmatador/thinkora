@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <list>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <vector>
 #include <thread>
@@ -26,17 +27,18 @@ public:
     Ocr(Board* board);
     ~Ocr();
     std::vector<Pattern> read_patterns(std::filesystem::path path);
-    void add(const Job& job);
+    void add(Sketch* sketch, const int& zoom);
 
 private:
-    bool get_sketch();
-    std::list<Job>::iterator combine(Job* job);
+    bool do_job();
+    bool combine(std::shared_ptr<Job>& job,
+        std::list<std::shared_ptr<Job>>& partial_jobs);
 
 private:
     std::thread thread_;
     std::atomic<bool> run_;
-    std::list<Job> jobs_;
-    std::list<Job> partial_jobs_;
+    std::list<std::shared_ptr<Job>> jobs_;
+    std::list<std::shared_ptr<Job>> partial_jobs_;
     std::mutex jobs_lock_;
     Board* board_;
 };

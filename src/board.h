@@ -11,6 +11,7 @@
 
 #include <gtkmm.h>
 
+#include "job.h"
 #include "ocr.h"
 #include "sketch.h"
 #include "shape.h"
@@ -27,6 +28,8 @@ public:
     ~Board();
     bool check_modified();
     void redraw(bool pass_on);
+    void apply_ocr(std::shared_ptr<Job>& job,
+        std::list<std::shared_ptr<Job>>& partial_jobs);
 
 private:
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;

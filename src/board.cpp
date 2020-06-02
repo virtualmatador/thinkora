@@ -77,6 +77,48 @@ void Board::redraw(bool pass_on)
     queue_draw();
 }
 
+void Board::apply_ocr(std::shared_ptr<Job>& job,
+    std::list<std::shared_ptr<Job>>& partial_jobs)
+{
+    shapes_lock_.lock();
+    sketches_lock_.lock();
+    std::vector<std::pair<int, Sketch*>> sketches;
+    for (auto it = partial_jobs.begin(); it != partial_jobs.end();)
+    {
+        if (it->use_count() == 2)
+        {
+            sketches.emplace_back((*it)->get_zoom(), (*it)->get_sketch());
+            it->reset();
+            it = partial_jobs.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+    if (job.use_count() == 2)
+    {
+        if (partial_jobs.empty())
+        {
+            add_reference(shapes_, job->get_zoom(), job->get_result());
+            // TODO Combine with text in left if size and position and style match
+            for (auto& sketch: sketches)
+            {
+                remove_reference(sketches_, sketch.first, sketch.second);
+            }
+            remove_reference(sketches_, job->get_zoom(), job->get_sketch());
+            job.reset();
+        }
+    }
+    else
+    {
+        remove_reference(sketches_, job->get_zoom(), job->get_sketch());
+        job.reset();
+    }
+    shapes_lock_.unlock();
+    sketches_lock_.unlock();
+}
+
 /*
 
 void Board::list_sketches(Job* job) const
@@ -396,9 +438,7 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
             sketch_->set_birth(std::chrono::steady_clock::now());
             auto frame = sketch_->get_frame();
             sketches_lock_.unlock();
-            // TODO
-            //ocr_.add({zoom_, frame, sketch_->get_line_width(),
-                //sketch_->get_color(), sketch_->get_style()});
+            ocr_.add(sketch_, zoom_);
             sketch_ = nullptr;
             modified_ = true;
             redraw(true);
@@ -582,13 +622,9 @@ void Board::open_map(std::istream& is, Map& map, const bool& sketch)
                 add_reference(map, zoom_, shape);
                 if (sketch)
                 {
-                    static_cast<Sketch*>(shape)->set_birth(
-                        std::chrono::steady_clock::now());
-                    // TODO
-                    /*
-                    ocr_.add({zoom, shape->get_frame(), shape->get_line_width(),
-                        shape->get_color(), shape->get_style()});
-                        */
+                    Sketch* sketch = static_cast<Sketch*>(shape);
+                    sketch->set_birth(std::chrono::steady_clock::now());
+                    ocr_.add(sketch, zoom);
                 }
             }
         }

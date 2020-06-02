@@ -17,20 +17,21 @@ class Sketch;
 class Job
 {
 public:
-    Job(const Sketch* sketch);
+    Job(Sketch* sketch, const int& zoom);
     ~Job();
-    const std::array<std::array<int, 2>, 2>& get_frame() const;
-    const int& get_zoom() const;
     void process();
     bool is_simple() const;
-    Shape* get_result();
+    const int& get_zoom() const;
+    Sketch* get_sketch() const;
+    Shape* get_result() const;
 
 private:
     void simplify();
     void match();
 
 private:
-    const Sketch* sketch_;
+    Sketch* sketch_;
+    int zoom_;
     std::mutex sketch_lock_;
     std::vector<std::array<int, 2>> points_;
     std::vector<Convex> convexes_;

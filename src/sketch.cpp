@@ -2,11 +2,6 @@
 
 #include "sketch.h"
 
-Sketch::~Sketch()
-{
-    // TODO set job->sketch nullptr
-}
-
 void Sketch::set_sketch()
 {
     frame_ =
@@ -39,6 +34,11 @@ void Sketch::add_point(const std::array<int, 2>& point)
 void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
 {
     birth_ = birth;
+}
+
+void Sketch::set_job(const std::shared_ptr<Job>& job)
+{
+    job_ = job;
 }
 
 std::vector<std::array<int, 2>>& Sketch::get_points()

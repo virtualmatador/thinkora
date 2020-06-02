@@ -9,8 +9,9 @@
 std::vector<Pattern> Job::shape_patterns_;
 std::map<std::string, std::vector<Pattern>> Job::char_patterns_;
 
-Job::Job(const Sketch* sketch)
+Job::Job(Sketch* sketch, const int& zoom)
     : sketch_{sketch}
+    , zoom_{zoom}
 {
 }
 
@@ -30,7 +31,17 @@ bool Job::is_simple() const
     return pattern_->is_simple();
 }
 
-Shape* Job::get_result()
+const int& Job::get_zoom() const
+{
+    return zoom_;
+}
+
+Sketch* Job::get_sketch() const
+{
+    return sketch_;
+}
+
+Shape* Job::get_result() const
 {
     Shape* shape;
     /*

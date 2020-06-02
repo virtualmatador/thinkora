@@ -69,7 +69,7 @@ std::vector<Convex> Convex::extract(const std::vector<std::array<int, 2>>&
 
 Convex::Convex(const jsonio::json& json)
 {
-    const jsonio::json_value* value;
+    const jsonio::json* value;
     value = json.get_value("b_a");
     if (value)
     {

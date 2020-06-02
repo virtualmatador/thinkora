@@ -28,7 +28,7 @@ Ocr::Ocr(Board* board)
     {
         while (run_)
         {
-            if (get_sketch())
+            if (do_job())
             {
                 std::this_thread::sleep_for(std::chrono::operator""ms(delay_ms_ / 4));
             }
@@ -58,96 +58,92 @@ Ocr::~Ocr()
     thread_.join();
 }
 
-void Ocr::add(const Job& job)
+void Ocr::add(Sketch* sketch, const int& zoom)
 {
     std::lock_guard<std::mutex> lock{jobs_lock_};
-    // TODO jobs_.emplace_back(job);
+    sketch->set_job(jobs_.emplace_back(std::make_shared<Job>(sketch, zoom)));
 }
 
-bool Ocr::get_sketch()
-{/*
-    Job* job;
+bool Ocr::do_job()
+{
+    std::shared_ptr<Job> job;
     {
         std::lock_guard<std::mutex> lock{jobs_lock_};
         if (jobs_.size() > 0)
         {
-            job = &jobs_.front();
+            job = std::move(jobs_.front());
+            jobs_.pop_front();
         }
-        else
+    }
+    if (job)
+    {
+        auto time = std::chrono::steady_clock::now();
+        if (time - job->sketch_->get_birth() > std::chrono::operator""ms(delay_ms_))
         {
-            // TODO check all partial_jobs can be deleted from board
-            while (!partial_jobs_.empty())
+            job->process();
+            std::list<std::shared_ptr<Job>> partial_jobs;
+            if (job->is_simple())
             {
-                job = &partial_jobs_.front();
-                job->choice_ = std::size_t(-1);
-                if (board_->replace_sketches(job, nullptr, job->get_result()))
-                {
-                    partial_jobs_.pop_front();
-                }
-                else
-                {
-                    std::lock_guard<std::mutex> lock{jobs_lock_};
-                    jobs_.splice(jobs_.end(), partial_jobs_, partial_jobs_.begin());
-                }
+                job->choice_ = 0;
             }
-            return true;
+            /*
+            else if (job->need_base_line())
+            {
+                // TODO get base line from left or right
+                // Choose between lowercase and uppercase
+            }
+            */
+            else if (!combine(job, partial_jobs))
+            {
+                return false;
+            }
+            board_->apply_ocr(job, partial_jobs);
+            if (job)
+            {
+                partial_jobs_.emplace_back(std::move(job));
+            }
+            for (auto& partial_job: partial_jobs)
+            {
+                partial_jobs_.emplace_back(std::move(partial_job));
+            }
+            return false;
         }
+        // modify using sticky points
+        // create sticky points
+        return true;
     }
-    auto time = std::chrono::steady_clock::now();
-    board_->list_sketches(job);
-    std::chrono::steady_clock::time_point recent =
-        std::chrono::steady_clock::time_point::min();
-    for (const auto& sketch: job->sketches_)
+    else
     {
-        if (recent < sketch.get_birth())
+        // TODO check all partial_jobs can be deleted from board
+        /*
+        while (!partial_jobs_.empty())
         {
-            recent = sketch.get_birth();
-        }
-    }
-    if (recent == std::chrono::steady_clock::time_point::min() ||
-        time - recent > std::chrono::operator""ms(delay_ms_))
-    {
-        job->process();
-        if (job->is_simple())
-        {
-            job->choice_ = 0;
+            job = &partial_jobs_.front();
+            job->choice_ = std::size_t(-1);
             if (board_->replace_sketches(job, nullptr, job->get_result()))
             {
-                std::lock_guard<std::mutex> lock{jobs_lock_};
-                jobs_.pop_front();
-            }
-        }
-        else if (auto match = combine(job); match != partial_jobs_.end())
-        {
-            if (board_->replace_sketches(job, &(*match), job->get_result()))
-            {
-                partial_jobs_.erase(match);
-                std::lock_guard<std::mutex> lock{jobs_lock_};
-                jobs_.pop_front();
+                partial_jobs_.pop_front();
             }
             else
             {
                 std::lock_guard<std::mutex> lock{jobs_lock_};
-                jobs_.splice(jobs_.end(), partial_jobs_, match);
+                jobs_.splice(jobs_.end(), partial_jobs_, partial_jobs_.begin());
             }
         }
-        else
-        {
-            std::lock_guard<std::mutex> lock{jobs_lock_};
-            partial_jobs_.splice(partial_jobs_.end(), jobs_, jobs_.begin());
-        }
-        return false;
+        */
+        return true;
     }
-    // TODO Combine with text in left if size and position and style match
-    // Choose between lowercase and uppercase
-    // Combine . "
-    // modify using sticky points
-    // create sticky points*/
-    return true;
 }
 
-std::list<Job>::iterator Ocr::combine(Job* job)
+bool Ocr::combine(std::shared_ptr<Job>& job,
+    std::list<std::shared_ptr<Job>>& partial_jobs)
 {
     // TODO mix jobs together
-    return partial_jobs_.end();
+    // if ()
+    {
+        std::lock_guard<std::mutex> lock{jobs_lock_};
+        jobs_.emplace_back(std::move(job));
+        return false;
+    }
+    return true;
 }

@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include <gtkmm.h>
 
 #include "window.h"
