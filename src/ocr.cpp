@@ -64,6 +64,11 @@ void Ocr::add(Sketch* sketch, const int& zoom)
     sketch->set_job(jobs_.emplace_back(std::make_shared<Job>(sketch, zoom)));
 }
 
+void Ocr::cancel()
+{
+    // TODO
+}
+
 bool Ocr::do_job()
 {
     std::shared_ptr<Job> job;

@@ -80,6 +80,7 @@ void Board::redraw(bool pass_on)
 void Board::apply_ocr(std::shared_ptr<Job>& job,
     std::list<std::shared_ptr<Job>>& partial_jobs)
 {
+    /*
     shapes_lock_.lock();
     sketches_lock_.lock();
     std::vector<std::pair<int, Sketch*>> sketches;
@@ -117,6 +118,7 @@ void Board::apply_ocr(std::shared_ptr<Job>& job,
     }
     shapes_lock_.unlock();
     sketches_lock_.unlock();
+    */
 }
 
 /*
@@ -211,30 +213,23 @@ bool Board::replace_sketches(const Job* job, const std::vector<Sketch>& sketches
 */
 void Board::clear_data()
 {
+    ocr_.cancel();
+    // TODO clear job results
     shapes_lock_.lock();
-    clear_map(shapes_);
-    sketches_lock_.lock();
-    cleared_ = true;
-    shapes_lock_.unlock();
-    clear_map(sketches_);
-    sketches_lock_.unlock();
-}
-
-void Board::clear_map(Map& map)
-{
-    for (auto& [zoom, plane]: map)
+    for (auto& [zoom, plane]: shapes_)
     {
         for (auto& [position, shapes]: plane)
         {
             while (!shapes.empty())
             {
                 auto shape = *shapes.begin();
-                remove_reference(map, zoom, shape);
+                remove_reference(zoom, shape);
                 delete shape;
             }
         }
     }
-    map.clear();
+    shapes_.clear();
+    shapes_lock_.unlock();
 }
 
 /*
@@ -267,10 +262,10 @@ void Board::push_sketches(const Job* job,
 }
 */
 
-void Board::add_reference(Map& map, const int& zoom, Shape* shape)
+void Board::add_reference(const int& zoom, Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
-    auto& layer = map[zoom];
+    auto& layer = shapes_[zoom];
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
@@ -280,10 +275,10 @@ void Board::add_reference(Map& map, const int& zoom, Shape* shape)
     }
 }
 
-void Board::remove_reference(Map& map, const int& zoom, Shape* shape)
+void Board::remove_reference(const int& zoom, Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
-    auto layer = map.find(zoom);
+    auto layer = shapes_.find(zoom);
     for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
     {
         for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
@@ -298,7 +293,7 @@ void Board::remove_reference(Map& map, const int& zoom, Shape* shape)
     }
     if (layer->second.size() == 0)
     {
-        map.erase(layer);
+        shapes_.erase(layer);
     }
 }
 
@@ -319,17 +314,6 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
         }
     }};
     shapes_lock_.lock();
-    draw_layers(cr, shapes_, area);
-    sketches_lock_.lock();
-    shapes_lock_.unlock();
-    draw_layers(cr, sketches_, area);
-    sketches_lock_.unlock();
-    return true;
-}
-
-void Board::draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
-    const Map& map, const std::array<std::array<int, 2>, 2>& area) const
-{
     for (int zoom_delta = draw_level_limit_; zoom_delta >= -draw_level_limit_;
         --zoom_delta)
     {
@@ -337,37 +321,36 @@ void Board::draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
         view[0] = apply_zoom(area[0], -zoom_delta);
         view[1] = apply_zoom(area[1], -zoom_delta);
         view = regionize(view);
-        auto targets = list_shapes(map, zoom_ - zoom_delta, view);
-        for (const auto& target: targets)
+        std::set<Shape*> shapes;
+        auto layer = shapes_.find(zoom_ - zoom_delta);
+        if (layer != shapes_.end())
         {
-            target->draw(cr, zoom_delta, area[0]);
-        }
-    }
-}
-
-std::set<Shape*> Board::list_shapes(const Map& map, const int& zoom,
-    const std::array<std::array<int, 2>, 2>& view) const
-{
-    std::set<Shape*> shapes;
-    auto layer = map.find(zoom);
-    if (layer != map.end())
-    {
-        for (auto x = view[0][0]; x <= view[1][0]; ++x)
-        {
-            for (auto y = view[0][1]; y <= view[1][1]; ++y)
+            for (auto x = view[0][0]; x <= view[1][0]; ++x)
             {
-                auto shapeset = layer->second.find({x, y});
-                if (shapeset != layer->second.end())
+                for (auto y = view[0][1]; y <= view[1][1]; ++y)
                 {
-                    for (auto& shape: shapeset->second)
+                    auto shapeset = layer->second.find({x, y});
+                    if (shapeset != layer->second.end())
                     {
-                        shapes.insert(shape);
+                        for (auto& shape: shapeset->second)
+                        {
+                            shapes.insert(shape);
+                        }
                     }
                 }
             }
         }
+        for (const auto& shape: shapes)
+        {
+            shape->draw(cr, zoom_delta, area[0]);
+        }
     }
-    return shapes;
+    shapes_lock_.unlock();
+    if (sketch_)
+    {
+        sketch_->draw(cr, 0, area[0]);
+    }
+    return true;
 }
 
 bool Board::on_button_press_event(GdkEventButton* button_event)
@@ -382,9 +365,6 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
                 bar_.marker_color_, bar_.marker_style_ };
             sketch_->set_sketch();
             sketch_->add_point(mouse_position_);
-            sketches_lock_.lock();
-            add_reference(sketches_, zoom_, sketch_);
-            sketches_lock_.unlock();
             redraw(true);
         }
         else if (button_event->button == 2)
@@ -405,10 +385,7 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
     if (mouse_button_ == 1)
     {
         mouse_position_ = get_input_position(motion_event->x, motion_event->y);
-        sketches_lock_.lock();
         sketch_->add_point(mouse_position_);
-        add_reference(sketches_, zoom_, sketch_);
-        sketches_lock_.unlock();
         redraw(true);
     }
     else if (mouse_button_ == 2)
@@ -436,10 +413,10 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         if (mouse_button_ == 1)
         {
             mouse_button_ = 0;
-            sketches_lock_.lock();
             sketch_->set_birth(std::chrono::steady_clock::now());
-            auto frame = sketch_->get_frame();
-            sketches_lock_.unlock();
+            shapes_lock_.lock();
+            add_reference(zoom_, sketch_);
+            shapes_lock_.unlock();
             ocr_.add(sketch_, zoom_);
             sketch_ = nullptr;
             modified_ = true;
@@ -524,12 +501,26 @@ void Board::on_save() const
         if (file)
         {
             shapes_lock_.lock();
-            save_map(file, shapes_, false);
-            sketches_lock_.lock();
+            file << shapes_.size() << std::endl;
+            for (const auto [zoom, layer]: shapes_)
+            {
+                std::set<const Shape*> shapes;
+                for (const auto [position, shapeset]: layer)
+                {
+                    for (const auto& shape: shapeset)
+                    {
+                        shapes.insert(shape);
+                    }
+                }
+                file << zoom << " " << shapes.size() << std::endl << std::endl;
+                for (const auto& shape: shapes)
+                {
+                    file << static_cast<int>(shape->get_type()) << std::endl;
+                    file << *shape << std::endl;
+                }
+            }
             modified_ = false;
             shapes_lock_.unlock();
-            save_map(file, sketches_, true);
-            sketches_lock_.unlock();
         }
         else
         {
@@ -537,31 +528,6 @@ void Board::on_save() const
                 "Failed to save file.", false, Gtk::MessageType::MESSAGE_ERROR,
                 Gtk::ButtonsType::BUTTONS_OK, true);
             error_message.run();
-        }
-    }
-}
-
-void Board::save_map(std::ostream& os, const Map& map, const bool& sketch) const
-{
-    os << map.size() << std::endl;
-    for (const auto [zoom, layer]: map)
-    {
-        std::set<const Shape*> targets;
-        for (const auto [position, shapeset]: layer)
-        {
-            for (const auto& shape: shapeset)
-            {
-                targets.insert(shape);
-            }
-        }
-        os << zoom << " " << targets.size() << std::endl << std::endl;
-        for (const auto& target: targets)
-        {
-            if (!sketch)
-            {
-                os << int(target->get_type()) << std::endl;
-            }
-            os << *target << std::endl;
         }
     }
 }
@@ -581,12 +547,32 @@ void Board::on_open()
         {
             clear_data();
             shapes_lock_.lock();
-            open_map(file, shapes_, false);
-            sketches_lock_.lock();
+            std::size_t zoom_count;
+            file >> zoom_count;
+            for (std::size_t i = 0; i < zoom_count; ++i)
+            {
+                int zoom;
+                int type;
+                Shape* shape;
+                std::size_t shape_count;
+                if (file >> zoom >> shape_count)
+                {
+                    for (std::size_t i = 0; i < shape_count; ++i)
+                    {
+                        file >> type;
+                        shape = Shape::create_shape(static_cast<Shape::Type>(type));
+                        file >> *shape;
+                        add_reference(zoom, shape);
+                        if (static_cast<Shape::Type>(type) == Shape::Type::SKETCH)
+                        {
+                            Sketch* sketch = static_cast<Sketch*>(shape);
+                            // TODO Add to jobs
+                        }
+                    }
+                }
+            }
             modified_ = false;
             shapes_lock_.unlock();
-            open_map(file, sketches_, true);
-            sketches_lock_.unlock();
             redraw(true);
         }
         else
@@ -595,42 +581,6 @@ void Board::on_open()
                 "Failed to open file.", false, Gtk::MessageType::MESSAGE_ERROR,
                 Gtk::ButtonsType::BUTTONS_OK, true);
             error_message.run();
-        }
-    }
-}
-
-void Board::open_map(std::istream& is, Map& map, const bool& sketch)
-{
-    std::size_t zoom_count;
-    is >> zoom_count;
-    for (std::size_t i = 0; i < zoom_count; ++i)
-    {
-        int zoom;
-        Shape::Type type;
-        Shape* shape;
-        std::size_t shape_count;
-        if (is >> zoom >> shape_count)
-        {
-            for (std::size_t i = 0; i < shape_count; ++i)
-            {
-                if (sketch)
-                {
-                    shape = Shape::create_shape(Shape::Type::SKETCH);
-                }
-                else
-                {
-                    is >> (int&)(type);
-                    shape = Shape::create_shape(type);
-                }
-                is >> *shape;
-                add_reference(map, zoom_, shape);
-                if (sketch)
-                {
-                    Sketch* sketch = static_cast<Sketch*>(shape);
-                    sketch->set_birth(std::chrono::steady_clock::now());
-                    ocr_.add(sketch, zoom);
-                }
-            }
         }
     }
 }

@@ -28,6 +28,7 @@ public:
     ~Ocr();
     std::vector<Pattern> read_patterns(std::filesystem::path path);
     void add(Sketch* sketch, const int& zoom);
+    void cancel();
 
 private:
     bool do_job();

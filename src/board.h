@@ -21,9 +21,6 @@ class Bar;
 class Board: public Gtk::DrawingArea
 {
 public:
-    using Map = std::map<int, std::map<std::pair<int, int>, std::set<Shape*>>>;
-
-public:
     Board(Bar& bar);
     ~Board();
     bool check_modified();
@@ -44,17 +41,8 @@ private:
 
 private:
     void clear_data();
-    void clear_map(Map& map);
-    void push_sketches(const Job* job,
-        std::function<void(Sketch&)> pusher) const;
-    void draw_layers(const Cairo::RefPtr<Cairo::Context>& cr,
-        const Map& map, const std::array<std::array<int, 2>, 2>& area) const;
-    std::set<Shape*> list_shapes(const Map& map, const int& zoom,
-        const std::array<std::array<int, 2>, 2>& view) const;
-    void add_reference(Map& map, const int& zoom, Shape* shape);
-    void remove_reference(Map& map, const int& zoom, Shape* shape);
-    void save_map(std::ostream& os, const Map& map, const bool& sketch) const;
-    void open_map(std::istream& is, Map& map, const bool& sketch);
+    void add_reference(const int& zoom, Shape* shape);
+    void remove_reference(const int& zoom, Shape* shape);
     void clamp_position();
     bool check_zoom(const int& zoom, const std::array<int, 2>& center);
     std::string choose_file(Gtk::FileChooserAction action) const;
@@ -66,10 +54,8 @@ private:
     mutable bool modified_;
     mutable bool cleared_;
     Sketch* sketch_;
-    Map shapes_;
+    std::map<int, std::map<std::pair<int, int>, std::set<Shape*>>> shapes_;
     mutable std::mutex shapes_lock_;
-    Map sketches_;
-    mutable std::mutex sketches_lock_;
     std::array<int, 2> center_pre_pad_;
     std::array<int, 2> mouse_position_;
     std::array<int, 2> mouse_pre_pad_;
