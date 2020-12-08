@@ -15,8 +15,8 @@ Ocr::Ocr(Board* board)
     : run_{true}
     , board_{board}
 {
-    Job::shape_patterns_ = read_patterns("pattern/shape/");
-    for (auto& dir: std::filesystem::directory_iterator("pattern/character/"))
+    Job::shape_patterns_ = read_patterns("../pattern/shape/");
+    for (auto& dir: std::filesystem::directory_iterator("../pattern/character/"))
     {
         if (dir.is_directory())
         {
