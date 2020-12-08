@@ -8,7 +8,7 @@
 
 #include "bar.h"
 
-Bar::Bar(Board* board)
+Bar::Bar(Board& board)
     : board_{board}
     , marker_color_{"#FFFFFF"}
     , marker_width_{1}
@@ -32,7 +32,7 @@ void Bar::redraw(bool pass_on)
 {
     if (pass_on)
     {
-        board_->redraw(false);
+        board_.redraw(false);
     }
     set_zoom();
     set_position();
@@ -43,7 +43,7 @@ void Bar::add_open()
 {
     open_.signal_clicked().connect([this]()
     {
-        board_->on_open();
+        board_.on_open();
     });
     open_.set_label("Open");
     add(open_);
@@ -54,7 +54,7 @@ void Bar::add_save()
 {
     save_.signal_clicked().connect([this]()
     {
-        board_->on_save();
+        board_.on_save();
     });
     save_.set_label("Save");
     add(save_);
@@ -65,7 +65,7 @@ void Bar::add_origin()
 {
     origin_.signal_clicked().connect([this]()
     {
-        board_->on_pad_origin();
+        board_.on_origin();
     });
     origin_.set_label("Origin");
     add(origin_);
@@ -297,7 +297,7 @@ void Bar::draw_line(const Cairo::RefPtr<Cairo::Context>& cr,
 void Bar::set_zoom()
 {
     std::ostringstream formatter;
-    formatter << std::left << "Z: " << std::setw(3) << board_->zoom_;
+    formatter << std::left << "Z: " << std::setw(3) << board_.zoom_;
     zoom_.set_label(formatter.str());
 }
 
@@ -305,8 +305,8 @@ void Bar::set_position()
 {
     std::ostringstream formatter;
     formatter << std::left << "X: " <<
-        std::setw(11) << board_->mouse_position_[0] << " Y: " <<
-        std::setw(11) << board_->mouse_position_[1];
+        std::setw(11) << board_.mouse_position_[0] << " Y: " <<
+        std::setw(11) << board_.mouse_position_[1];
     position_.set_label(formatter.str());
 }
 

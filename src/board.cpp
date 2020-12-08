@@ -13,7 +13,7 @@
 
 std::vector<std::vector<std::vector<double>>> Board::dashes_;
 
-Board::Board(Bar* bar)
+Board::Board(Bar& bar)
     : zoom_{0}
     , center_{0, 0}
     , modified_{false}
@@ -72,7 +72,7 @@ void Board::redraw(bool pass_on)
 {
     if (pass_on)
     {
-        bar_->redraw(false);
+        bar_.redraw(false);
     }
     queue_draw();
 }
@@ -376,9 +376,10 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
     {
         if (button_event->button == 1)
         {
+            bar_.set_sensitive(false);
             mouse_button_ = 1;
-            sketch_ = new Sketch{bar_->marker_width_,
-                bar_->marker_color_, bar_->marker_style_};
+            sketch_ = new Sketch{ bar_.marker_width_,
+                bar_.marker_color_, bar_.marker_style_ };
             sketch_->set_sketch();
             sketch_->add_point(mouse_position_);
             sketches_lock_.lock();
@@ -388,6 +389,7 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
         }
         else if (button_event->button == 2)
         {
+            bar_.set_sensitive(false);
             mouse_button_ = 2;
             center_pre_pad_ = center_;
             mouse_pre_pad_ = {int(button_event->x), int(button_event->y)};
@@ -422,7 +424,7 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
     else
     {
         mouse_position_ = get_input_position(motion_event->x, motion_event->y);
-        bar_->redraw(false);
+        bar_.redraw(false);
     }
     return true;
 }
@@ -442,6 +444,7 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
             sketch_ = nullptr;
             modified_ = true;
             redraw(true);
+            bar_.set_sensitive(true);
         }
     }
     else if (release_event->button == 2)
@@ -450,6 +453,7 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         {
             mouse_button_ = 0;
             redraw(true);
+            bar_.set_sensitive(true);
         }
     }
     return true;
@@ -506,7 +510,7 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
 bool Board::on_enter_notify_event(GdkEventCrossing* crossing_event)
 {
     mouse_position_ = get_input_position(crossing_event->x, crossing_event->y);
-    bar_->redraw(false);
+    bar_.redraw(false);
     return true;
 }
 
@@ -658,7 +662,7 @@ std::string Board::choose_file(Gtk::FileChooserAction action) const
     return "";
 }
 
-void Board::on_pad_origin()
+void Board::on_origin()
 {
     mouse_position_[0] -= center_[0];
     mouse_position_[1] -= center_[1];

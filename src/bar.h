@@ -10,7 +10,7 @@ class Board;
 class Bar: public Gtk::ActionBar
 {
 public:
-    Bar(Board* board);
+    Bar(Board& board);
     ~Bar();
     void redraw(bool pass_on);
 
@@ -42,7 +42,7 @@ private:
     Gdk::RGBA marker_color_;
     int marker_width_;
     Shape::Style marker_style_;
-    Board* board_;
+    Board& board_;
 
 private:
     friend class Board;

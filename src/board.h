@@ -24,7 +24,7 @@ public:
     using Map = std::map<int, std::map<std::pair<int, int>, std::set<Shape*>>>;
 
 public:
-    Board(Bar* bar);
+    Board(Bar& bar);
     ~Board();
     bool check_modified();
     void redraw(bool pass_on);
@@ -40,7 +40,7 @@ private:
     bool on_enter_notify_event(GdkEventCrossing* crossing_event) override;
     void on_save() const;
     void on_open();
-    void on_pad_origin();
+    void on_origin();
 
 private:
     void clear_data();
@@ -76,7 +76,7 @@ private:
     std::stack<std::array<int, 2>> zoom_lag_;
     int mouse_button_;
     Ocr ocr_;
-    Bar* bar_;
+    Bar& bar_;
 
 public:
     static std::vector<std::vector<std::vector<double>>> dashes_;

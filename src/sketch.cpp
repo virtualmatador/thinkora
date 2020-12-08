@@ -15,18 +15,7 @@ void Sketch::add_point(const std::array<int, 2>& point)
 {
     if (points_.empty() || points_.back() != point)
     {
-        if (points_.size() < 2 ||
-            (points_[points_.size() - 1][0] - points_[points_.size() - 2][0]) *
-            (point[1] - points_[points_.size() - 1][1]) !=
-            (points_[points_.size() - 1][1] - points_[points_.size() - 2][1]) *
-            (point[0] - points_[points_.size() - 1][0]))
-        {
-            points_.emplace_back(point);
-        }
-        else
-        {
-            points_.back() = point;
-        }
+        points_.emplace_back(point);
         extend_frame(frame_, point);
     }
 }

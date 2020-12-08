@@ -1,8 +1,8 @@
 #include "window.h"
 
 Window::Window()
-    : bar_{&board_}
-    , board_{&bar_}
+    : bar_{ board_ }
+    , board_{ bar_ }
 {
     fullscreen();
     add(box_);
