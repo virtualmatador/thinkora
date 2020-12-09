@@ -4,22 +4,23 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
-#include <memory>
 #include <vector>
 
-#include "job.h"
+#include "fit.h"
+#include "pattern.h"
 #include "shape.h"
 
 class Sketch: public Shape
 {
 public:
     using Shape::Shape;
-    void set_sketch();
+    void set_sketch(int zoom);
     void add_point(const std::array<int, 2>& point);
     void set_birth(const std::chrono::steady_clock::time_point& birth);
-    void set_job(const std::shared_ptr<Job>& job);
     std::vector<std::array<int, 2>>& get_points();
     const std::chrono::steady_clock::time_point& get_birth() const;
+    const int& get_zoom() const;
+    std::vector<Fit> fit(const std::vector<Pattern> patterns) const;
 
 public:
     Type get_type() const override;
@@ -33,7 +34,7 @@ private:
 private:
     std::vector<std::array<int, 2>> points_;
     std::chrono::steady_clock::time_point birth_;
-    std::shared_ptr<Job> job_;
+    int zoom_;
 };
 
 #endif // THINKORA_SRC_SKETCH_H

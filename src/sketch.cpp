@@ -2,8 +2,9 @@
 
 #include "sketch.h"
 
-void Sketch::set_sketch()
+void Sketch::set_sketch(int zoom)
 {
+    zoom_ = zoom;
     frame_ =
     {
         std::numeric_limits<int>::max(), std::numeric_limits<int>::max(),
@@ -25,11 +26,6 @@ void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
     birth_ = birth;
 }
 
-void Sketch::set_job(const std::shared_ptr<Job>& job)
-{
-    job_ = job;
-}
-
 std::vector<std::array<int, 2>>& Sketch::get_points()
 {
     return points_;
@@ -38,6 +34,21 @@ std::vector<std::array<int, 2>>& Sketch::get_points()
 const std::chrono::steady_clock::time_point& Sketch::get_birth() const
 {
     return birth_;
+}
+
+const int& Sketch::get_zoom() const
+{
+    return zoom_;
+}
+
+std::vector<Fit> Sketch::fit(const std::vector<Pattern> patterns) const
+{
+    std::vector<Fit> fits;
+    for (const auto& pattern : patterns)
+    {
+        
+    }
+    return fits;
 }
 
 Shape::Type Sketch::get_type() const
@@ -67,6 +78,7 @@ void Sketch::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
 
 void Sketch::write_dtails(std::ostream& os) const
 {
+    os << zoom_ << std::endl;
     os << birth_.time_since_epoch().count() << std::endl;
     os << points_.size() << std::endl;
     for (const auto& point: points_)
@@ -77,6 +89,7 @@ void Sketch::write_dtails(std::ostream& os) const
 
 void Sketch::read_details(std::istream& is)
 {
+    is >> zoom_;
     std::chrono::steady_clock::rep birth_rep;
     is >> birth_rep;
     birth_ = std::chrono::steady_clock::time_point(

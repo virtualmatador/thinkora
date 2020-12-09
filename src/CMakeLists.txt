@@ -8,7 +8,8 @@ add_executable(thinkora
     board.cpp
     circle.cpp
     convex.cpp
-    job.cpp
+    fit.cpp
+    guess.cpp
     line.cpp
     main.cpp
     ocr.cpp
@@ -21,5 +22,6 @@ add_executable(thinkora
     toolbox.cpp
     window.cpp
 )
+add_dependencies("thinkora" "patterns")
 set_property(TARGET thinkora PROPERTY CXX_STANDARD 20)
 target_link_libraries(thinkora jsonio ${GTKMM_LIBRARIES} pthread)

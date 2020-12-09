@@ -14,17 +14,16 @@
 std::vector<std::vector<std::vector<double>>> Board::dashes_;
 
 Board::Board(Bar& bar)
-    : zoom_{0}
-    , center_{0, 0}
-    , modified_{false}
-    , cleared_{false}
-    , sketch_{nullptr}
-    , center_pre_pad_{0, 0}
-    , mouse_position_{0, 0}
-    , mouse_pre_pad_{0, 0}
-    , mouse_button_{0}
-    , ocr_{this}
-    , bar_{bar}
+    : zoom_{ 0 }
+    , center_{ 0, 0 }
+    , modified_{ false }
+    , sketch_{ nullptr }
+    , center_pre_pad_{ 0, 0 }
+    , mouse_position_{ 0, 0 }
+    , mouse_pre_pad_{ 0, 0 }
+    , mouse_button_{ 0 }
+    , ocr_{ *this }
+    , bar_{ bar }
 {
     add_events(
         Gdk::EventMask::BUTTON_PRESS_MASK |
@@ -77,10 +76,46 @@ void Board::redraw(bool pass_on)
     queue_draw();
 }
 
-void Board::apply_ocr(std::shared_ptr<Job>& job,
-    std::list<std::shared_ptr<Job>>& partial_jobs)
+void Board::apply_ocr(std::list<const Sketch*>&& sketches, int zoom,
+    std::list<std::unique_ptr<Shape>>&& shapes)
 {
-    /*
+    shapes_lock_.lock();
+    for (auto& sketch : sketches)
+    {
+        remove_reference(zoom, sketch);
+        delete sketch;
+    }
+    for (auto& shape : shapes)
+    {
+        add_reference(zoom, shape.release());
+    }
+    shapes_lock_.unlock();
+    queue_draw();
+}
+
+void Board::clear_data()
+{
+    ocr_.cancel();
+    shapes_lock_.lock();
+    for (auto& [zoom, plane]: shapes_)
+    {
+        for (auto& [position, shapes]: plane)
+        {
+            while (!shapes.empty())
+            {
+                auto shape = *shapes.begin();
+                remove_reference(zoom, shape);
+                delete shape;
+            }
+        }
+    }
+    shapes_.clear();
+    shapes_lock_.unlock();
+}
+
+/*
+void Board::apply_ocr()
+{
     shapes_lock_.lock();
     sketches_lock_.lock();
     std::vector<std::pair<int, Sketch*>> sketches;
@@ -118,10 +153,7 @@ void Board::apply_ocr(std::shared_ptr<Job>& job,
     }
     shapes_lock_.unlock();
     sketches_lock_.unlock();
-    */
 }
-
-/*
 
 void Board::list_sketches(Job* job) const
 {
@@ -210,29 +242,7 @@ bool Board::replace_sketches(const Job* job, const std::vector<Sketch>& sketches
     }
     return found;
 }
-*/
-void Board::clear_data()
-{
-    ocr_.cancel();
-    // TODO clear job results
-    shapes_lock_.lock();
-    for (auto& [zoom, plane]: shapes_)
-    {
-        for (auto& [position, shapes]: plane)
-        {
-            while (!shapes.empty())
-            {
-                auto shape = *shapes.begin();
-                remove_reference(zoom, shape);
-                delete shape;
-            }
-        }
-    }
-    shapes_.clear();
-    shapes_lock_.unlock();
-}
 
-/*
 void Board::push_sketches(const Job* job,
     std::function<void(Sketch&)> pusher) const
 {
@@ -262,7 +272,7 @@ void Board::push_sketches(const Job* job,
 }
 */
 
-void Board::add_reference(const int& zoom, Shape* shape)
+void Board::add_reference(const int& zoom, const Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
     auto& layer = shapes_[zoom];
@@ -275,7 +285,7 @@ void Board::add_reference(const int& zoom, Shape* shape)
     }
 }
 
-void Board::remove_reference(const int& zoom, Shape* shape)
+void Board::remove_reference(const int& zoom, const Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
     auto layer = shapes_.find(zoom);
@@ -321,7 +331,7 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
         view[0] = apply_zoom(area[0], -zoom_delta);
         view[1] = apply_zoom(area[1], -zoom_delta);
         view = regionize(view);
-        std::set<Shape*> shapes;
+        std::set<const Shape*> shapes;
         auto layer = shapes_.find(zoom_ - zoom_delta);
         if (layer != shapes_.end())
         {
@@ -359,18 +369,18 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
     {
         if (button_event->button == 1)
         {
-            bar_.set_sensitive(false);
             mouse_button_ = 1;
+            bar_.set_sensitive(false);
             sketch_ = new Sketch{ bar_.marker_width_,
                 bar_.marker_color_, bar_.marker_style_ };
-            sketch_->set_sketch();
+            sketch_->set_sketch(zoom_);
             sketch_->add_point(mouse_position_);
             redraw(true);
         }
         else if (button_event->button == 2)
         {
-            bar_.set_sensitive(false);
             mouse_button_ = 2;
+            bar_.set_sensitive(false);
             center_pre_pad_ = center_;
             mouse_pre_pad_ = {int(button_event->x), int(button_event->y)};
             redraw(true);
@@ -417,7 +427,7 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
             shapes_lock_.lock();
             add_reference(zoom_, sketch_);
             shapes_lock_.unlock();
-            ocr_.add(sketch_, zoom_);
+            ocr_.add(sketch_);
             sketch_ = nullptr;
             modified_ = true;
             redraw(true);
@@ -455,6 +465,8 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
             }
             if (check_zoom(zoom, center))
             {
+                zoom_ = zoom;
+                center_ = center;
                 if (!zoom_lag_.empty())
                 {
                     zoom_lag_.pop();
@@ -471,6 +483,8 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
             center[1] = center_[1] - mouse_position_[1] / 2;
             if (check_zoom(zoom, center))
             {
+                zoom_ = zoom;
+                center_ = center;
                 zoom_lag_.push({mouse_position_[0] % 2,
                     mouse_position_[1] % 2});
                 mouse_position_ =
@@ -491,7 +505,7 @@ bool Board::on_enter_notify_event(GdkEventCrossing* crossing_event)
     return true;
 }
 
-void Board::on_save() const
+void Board::on_save()
 {
     auto file_name =
         choose_file(Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SAVE);
@@ -547,6 +561,7 @@ void Board::on_open()
         {
             clear_data();
             shapes_lock_.lock();
+            std::vector<const Sketch*> sketches;
             std::size_t zoom_count;
             file >> zoom_count;
             for (std::size_t i = 0; i < zoom_count; ++i)
@@ -560,16 +575,26 @@ void Board::on_open()
                     for (std::size_t i = 0; i < shape_count; ++i)
                     {
                         file >> type;
-                        shape = Shape::create_shape(static_cast<Shape::Type>(type));
+                        shape = Shape::create_shape(
+                            static_cast<Shape::Type>(type));
                         file >> *shape;
                         add_reference(zoom, shape);
-                        if (static_cast<Shape::Type>(type) == Shape::Type::SKETCH)
+                        if (static_cast<Shape::Type>(type) ==
+                            Shape::Type::SKETCH)
                         {
                             Sketch* sketch = static_cast<Sketch*>(shape);
-                            // TODO Add to jobs
+                            sketches.emplace_back(sketch);
                         }
                     }
                 }
+            }
+            std::sort(sketches.begin(), sketches.end(), [](auto a, auto b)
+            {
+                return a->get_birth() < b->get_birth();
+            });
+            for (auto sketch : sketches)
+            {
+                ocr_.add(sketch);
             }
             modified_ = false;
             shapes_lock_.unlock();
@@ -629,17 +654,11 @@ void Board::clamp_position()
     center_[1] = std::min(center_[1], +position_limit_);
 }
 
-bool Board::check_zoom(const int& zoom, const std::array<int, 2>& center)
+bool Board::check_zoom(const int& zoom, const std::array<int, 2>& center) const
 {
-    if (center[0] >= -position_limit_ && center[0] <= position_limit_ &&
+    return center[0] >= -position_limit_ && center[0] <= position_limit_ &&
         center[1] >= -position_limit_ && center[1] <= position_limit_ &&
-        zoom >= -zoom_limit_ && zoom <= zoom_limit_)
-    {
-        zoom_ = zoom;
-        center_ = center;
-        return true;
-    }
-    return false;
+        zoom >= -zoom_limit_ && zoom <= zoom_limit_;
 }
 
 std::array<int, 2> Board::get_input_position(const int& x, const int& y) const
