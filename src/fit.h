@@ -1,16 +1,17 @@
 #ifndef THINKORA_SRC_FIT_H
 #define THINKORA_SRC_FIT_H
 
-class Pattern;
+class Result;
+class Sketch;
 
 class Fit
 {
 public:
-    Fit();
+    Fit(const Result& result, const Sketch& sketch, double similarity);
     ~Fit();
 
 private:
-    const Pattern* pattern_;
+    double similarity_;
 };
 
 #endif // THINKORA_SRC_FIT_H

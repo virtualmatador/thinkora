@@ -76,18 +76,18 @@ void Board::redraw(bool pass_on)
     queue_draw();
 }
 
-void Board::apply_ocr(std::list<const Sketch*>&& sketches, int zoom,
-    std::list<std::unique_ptr<Shape>>&& shapes)
+void Board::apply_ocr(const std::list<const Sketch*>& sources, int zoom,
+    const std::list<Shape*>& results)
 {
     shapes_lock_.lock();
-    for (auto& sketch : sketches)
+    for (auto& source : sources)
     {
-        remove_reference(zoom, sketch);
-        delete sketch;
+        remove_reference(zoom, source);
+        delete source;
     }
-    for (auto& shape : shapes)
+    for (auto& result : results)
     {
-        add_reference(zoom, shape.release());
+        add_reference(zoom, result);
     }
     shapes_lock_.unlock();
     queue_draw();
@@ -514,6 +514,7 @@ void Board::on_save()
         std::ofstream file(file_name);
         if (file)
         {
+            ocr_.apply();
             shapes_lock_.lock();
             file << shapes_.size() << std::endl;
             for (const auto [zoom, layer]: shapes_)
@@ -561,7 +562,6 @@ void Board::on_open()
         {
             clear_data();
             shapes_lock_.lock();
-            std::vector<const Sketch*> sketches;
             std::size_t zoom_count;
             file >> zoom_count;
             for (std::size_t i = 0; i < zoom_count; ++i)
@@ -579,22 +579,8 @@ void Board::on_open()
                             static_cast<Shape::Type>(type));
                         file >> *shape;
                         add_reference(zoom, shape);
-                        if (static_cast<Shape::Type>(type) ==
-                            Shape::Type::SKETCH)
-                        {
-                            Sketch* sketch = static_cast<Sketch*>(shape);
-                            sketches.emplace_back(sketch);
-                        }
                     }
                 }
-            }
-            std::sort(sketches.begin(), sketches.end(), [](auto a, auto b)
-            {
-                return a->get_birth() < b->get_birth();
-            });
-            for (auto sketch : sketches)
-            {
-                ocr_.add(sketch);
             }
             modified_ = false;
             shapes_lock_.unlock();

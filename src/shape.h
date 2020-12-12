@@ -33,6 +33,7 @@ public:
 
 public:
     Shape();
+    Shape(const Shape* shape);
     Shape(const int& line_width, const Gdk::RGBA& color, const Style& style);
     virtual ~Shape();
     const int& get_line_width() const;

@@ -10,6 +10,7 @@
 
 #include "guess.h"
 #include "pattern.h"
+#include "shape.h"
 #include "sketch.h"
 
 class Board;
@@ -21,22 +22,24 @@ public:
     ~Ocr();
     void add(const Sketch* sketch);
     void cancel();
+    void apply();
 
 private:
     std::vector<Pattern> read_patterns(std::filesystem::path path);
     void run();
-    void apply(const Guess& guess);
 
 private:
     std::vector<Pattern> patterns_;
     std::thread thread_;
     std::atomic<bool> run_;
-    std::list<const Sketch*> jobs_;
-    decltype(jobs_)::iterator progress_;
-    std::list<Guess> guesses_;
     std::condition_variable jobs_condition_;
     std::mutex jobs_lock_;
+    std::list<const Sketch*> jobs_;
     std::mutex working_lock_;
+    std::list<Guess*> guesses_;
+    std::list<const Sketch*> sources_;
+    std::list<Shape*> results_;
+    int zoom_;
     Board& board_;
 };
 

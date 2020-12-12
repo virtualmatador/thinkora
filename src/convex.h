@@ -9,13 +9,6 @@
 class Convex
 {
 public:
-    static const double treshold_;
-
-public:
-    static std::vector<Convex> extract(const std::vector<std::array<int, 2>>&
-        points, const std::array<std::array<int, 2>, 2>& frame);
-
-public:
     Convex(const jsonio::json& json);
     Convex(const std::array<int, 2>& point,
         const std::array<std::array<int, 2>, 2>& frame);

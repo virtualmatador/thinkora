@@ -38,16 +38,23 @@ Shape* Shape::create_shape(const Shape::Type& type)
 }
 
 Shape::Shape()
-    : line_width_{1}
-    , color_{Gdk::RGBA("#000000")}
-    , style_{Style::SOLID}
+    : line_width_{ 1 }
+    , color_{ Gdk::RGBA("#FFFFFF") }
+    , style_{ Style::SOLID }
+{
+}
+
+Shape::Shape(const Shape* shape)
+    : line_width_{ shape->line_width_ }
+    , color_{ shape->color_ }
+    , style_{ shape->style_ }
 {
 }
 
 Shape::Shape(const int& line_width, const Gdk::RGBA& color, const Style& style)
-    : line_width_{line_width}
-    , color_{color}
-    , style_{style}
+    : line_width_{ line_width }
+    , color_{ color }
+    , style_{ style }
 {
 }
 

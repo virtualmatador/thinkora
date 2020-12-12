@@ -10,9 +10,12 @@ Guess::~Guess()
 {
 }
 
-void Guess::match(const std::vector<Fit>& fits, std::list<Guess>& results)
+Guess* Guess::extend(const Pattern& pattern, const Sketch& sketch,
+    double similarity)
 {
+    shared_from_this();
     // TODO extend branch
+    return this;
 }
 
 double Guess::get_score() const
@@ -22,10 +25,10 @@ double Guess::get_score() const
 
 bool Guess::is_complete() const
 {
-    return result_->is_complete_;
+    return result_index_ == result_->get_size() - 1;
 }
 
-Guess Guess::start_node()
+Guess* Guess::start_node()
 {
-    return Guess(nullptr);
+    return new Guess(nullptr);
 }

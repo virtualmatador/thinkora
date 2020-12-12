@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "convex.h"
 #include "fit.h"
 #include "pattern.h"
 #include "shape.h"
@@ -20,7 +21,7 @@ public:
     std::vector<std::array<int, 2>>& get_points();
     const std::chrono::steady_clock::time_point& get_birth() const;
     const int& get_zoom() const;
-    std::vector<Fit> fit(const std::vector<Pattern> patterns) const;
+    std::vector<std::array<int, 2UL>> simplify() const;
 
 public:
     Type get_type() const override;

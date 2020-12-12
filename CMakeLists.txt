@@ -6,5 +6,5 @@ add_subdirectory(extern)
 add_subdirectory(src)
 
 add_custom_target("patterns" ALL
-    COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/patterns" patterns
+    COMMAND ${CMAKE_COMMAND} -E create_symlink "${CMAKE_CURRENT_SOURCE_DIR}/language" language
 )

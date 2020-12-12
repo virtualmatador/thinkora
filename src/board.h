@@ -24,8 +24,8 @@ public:
     ~Board();
     bool check_modified();
     void redraw(bool pass_on);
-    void apply_ocr(std::list<const Sketch*>&& sketches, int zoom,
-        std::list<std::unique_ptr<Shape>>&& shapes);
+    void apply_ocr(const std::list<const Sketch*>& sources, int zoom,
+        const std::list<Shape*>& results);
 
 private:
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;

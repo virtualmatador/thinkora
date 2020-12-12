@@ -2,71 +2,6 @@
 
 #include "convex.h"
 
-const double Convex::treshold_ = 0.4;
-
-std::vector<Convex> Convex::extract(const std::vector<std::array<int, 2>>&
-    points, const std::array<std::array<int, 2>, 2>& frame)
-{
-    std::vector<Convex> convexes;
-    for (std::size_t end = 0; end < points.size();)
-    {
-        if (points.size() - end == 1)
-        {
-            convexes.emplace_back(points[0], frame);
-            end = points.size();
-        }
-        else
-        {
-            std::array<std::array<int, 2>, 2> convex_frame =
-                initialize_frame(points[end], points[end + 1]);
-            if (points.size() - end == 2)
-            {
-                convexes.emplace_back(points, end, end + 2, 0.0, convex_frame, frame);
-                end = points.size();
-            }
-            else
-            {
-                std::size_t begin = end;
-                extend_frame(convex_frame, points[begin + 2]);
-                double first_angle = get_angle(
-                {
-                    points[begin + 1][0] - points[begin][0],
-                    points[begin + 1][1] - points[begin][1]
-                });
-                double second_angle = get_angle(
-                {
-                    points[begin + 2][0] - points[begin + 1][0],
-                    points[begin + 2][1] - points[begin + 1][1]
-                });
-                int d_r = get_rotation(first_angle, second_angle);
-                bool clockwise = d_r < 0;
-                for (end = begin + 3; end < points.size(); ++end)
-                {
-                    first_angle = second_angle;
-                    second_angle = get_angle(
-                    {
-                        points[end][0] - points[end - 1][0],
-                        points[end][1] - points[end - 1][1]
-                    });
-                    int r = get_rotation(first_angle, second_angle);
-                    if (clockwise != (r < 0))
-                    {
-                        break;
-                    }
-                    d_r += r;
-                    extend_frame(convex_frame, points[end]);
-                }
-                convexes.emplace_back(points, begin, end, d_r, convex_frame, frame);
-                if (end != points.size())
-                {
-                    --end;
-                }
-            }
-        }
-    }
-    return convexes;
-}
-
 Convex::Convex(const jsonio::json& json)
 {
     const jsonio::json* value;
@@ -168,44 +103,44 @@ Convex::~Convex()
 
 double Convex::compare(const Convex& convex) const
 {
-    double difference;
+    double similarity;
     if (n_b_ <= convex.n_b_ && n_e_ >= convex.n_e_)
     {
-        difference = 0.0;
+        similarity = 1.0;
         int count = 0;
         if (b_a_b_)
         {
-            difference += double(std::abs(get_rotation(b_a_, convex.b_a_))) /
+            similarity -= double(std::abs(get_rotation(b_a_, convex.b_a_))) /
                 45.0;
-            difference += std::abs(b_x_ - convex.b_x_);
-            difference += std::abs(b_y_ - convex.b_y_);
+            similarity -= std::abs(b_x_ - convex.b_x_);
+            similarity -= std::abs(b_y_ - convex.b_y_);
             count += 3;
         }
         if (e_a_b_)
         {
-            difference += double(std::abs(get_rotation(e_a_, convex.e_a_))) /
+            similarity -= double(std::abs(get_rotation(e_a_, convex.e_a_))) /
                 45.0;
-            difference += std::abs(e_x_ - convex.e_x_);
-            difference += std::abs(e_y_ - convex.e_y_);
+            similarity -= std::abs(e_x_ - convex.e_x_);
+            similarity -= std::abs(e_y_ - convex.e_y_);
             count += 3;
         }
         if (d_a_b_)
         {
-            difference += double(std::abs(get_rotation(d_a_, convex.d_a_))) /
+            similarity -= double(std::abs(get_rotation(d_a_, convex.d_a_))) /
                 45.0;
             count += 1;
         }
-        difference += double(std::abs(d_r_ - convex.d_r_)) / 45.0;
-        difference += std::abs(d_l_ - convex.d_l_);
+        similarity -= double(std::abs(d_r_ - convex.d_r_)) / 45.0;
+        similarity -= std::abs(d_l_ - convex.d_l_);
         count += 2;
-        difference += std::abs(f_x_ - convex.f_x_);
-        difference += std::abs(f_y_ - convex.f_y_);
+        similarity -= std::abs(f_x_ - convex.f_x_);
+        similarity -= std::abs(f_y_ - convex.f_y_);
         count += 2;
-        difference /= count;
+        similarity /= count;
     }
     else
     {
-        difference = 1.0;
+        similarity = 0.0;
     }
-    return difference;
+    return similarity;
 }

@@ -17,20 +17,20 @@
 
 Ocr::Ocr(Board& board)
     : run_{ true }
+    , zoom_{ 0 }
     , board_{ board }
-    , progress_{ jobs_.end() }
 {
-    for (auto& json_file: std::filesystem::directory_iterator("../patterns"))
+    for (auto& json_file: std::filesystem::directory_iterator(
+        "../language/patterns"))
     {
         std::fstream json_reader(json_file.path());
         jsonio::json json_pattern;
         json_reader >> json_pattern;
         if (json_pattern.completed())
         {
-            patterns_.emplace_back(json_pattern);
+            patterns_.emplace_back(json_file.path().stem(), json_pattern);
         }
     }
-    guesses_.emplace_back(Guess::start_node());
     thread_ = std::thread([this]()
     {
         while (run_)
@@ -75,22 +75,65 @@ void Ocr::cancel()
 void Ocr::run()
 {
     jobs_lock_.lock();
-    const Sketch* sketch = nullptr;
-    if (progress_ != jobs_.end())
+    const Sketch* sketch;
+    if (jobs_.empty())
     {
-        sketch = *progress_++;
+        sketch = nullptr;
+    }
+    else
+    {
+        sketch = jobs_.front();
+        jobs_.pop_front();
     }
     jobs_lock_.unlock();
     if (sketch)
     {
-        std::vector<Fit> fits = sketch->fit(patterns_);
-        std::list<Guess> new_guesses;
-        for (auto& guess : guesses_)
+        if (zoom_ != sketch->get_zoom())
         {
-            guess.match(fits, new_guesses);
+            apply();
         }
-        std::swap(guesses_, new_guesses);
+        zoom_ = sketch->get_zoom();
+        sources_.emplace_back(sketch);
+        // Check for edge
+        decltype(guesses_) guesses;
+        auto points = sketch->simplify();
+        bool match = false;
+        for (const auto& pattern : patterns_)
+        {
+            //auto similarity = pattern.match(convexes);
+            //if (similarity > 0.0)
+            {
+                match = true;
+                for (auto& guess : guesses_)
+                {
+                    //guesses.emplace_back(guess->extend(
+                    //    pattern.get_name(), sketch->get_frame(), similarity));
+                }
+            }
+        }
+        if (match)
+        {
+            std::swap(guesses_, guesses);
+        }
+        else
+        {
+            auto start = points.front();
+            for (auto it = std::next(points.begin()); it != points.end(); ++it)
+            {
+                auto ln = new Line(sketch);
+                ln->set_line({start[0], start[1], (*it)[0], (*it)[1]});
+                results_.emplace_back(ln);
+                start = *it;
+            }
+            apply();
+        }
     }
+    else
+    {
+        apply();
+    }
+    
+    /*
     bool incomplete = false;
     double best_score = 0;
     const Guess* best_guess = nullptr;
@@ -117,11 +160,17 @@ void Ocr::run()
         guesses_.clear();
         guesses_.emplace_back(Guess::start_node());
     }
+    */
 }
 
-void Ocr::apply(const Guess& guess)
+void Ocr::apply()
 {
-
+    // TODO apply to results
+    guesses_.clear();
+    guesses_.emplace_back(Guess::start_node());
+    board_.apply_ocr(sources_, zoom_, results_);
+    sources_.clear();
+    results_.clear();
 }
 
 /*
