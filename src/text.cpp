@@ -2,8 +2,8 @@
 
 #include "text.h"
 
-void Text::set_text(const Cairo::RefPtr<Cairo::Context>& cr, const std::array
-    <int, 2>& position, const int& height, const std::string& text)
+void Text::set_text(const Cairo::RefPtr<Cairo::Context>& cr,
+    const Point& position, const double& height, const std::string& text)
 {
     text_ = text;
     double font_size = height * 1.25;
@@ -14,7 +14,7 @@ void Text::set_text(const Cairo::RefPtr<Cairo::Context>& cr, const std::array
     frame_ =
     {
         position,
-        position[0] + int(extents.width), position[1] + int(extents.height)
+        position[0] + extents.width, position[1] + extents.height
     };
 }
 
@@ -24,9 +24,9 @@ Shape::Type Text::get_type() const
 }
 
 void Text::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& zoom_delta, const std::array<int, 2>& pad) const
+        const int& zoom_delta, const Point& pad) const
 {
-    std::array<std::array<int, 2>, 2> frame =
+    Rectangle frame =
     {
         transform(frame_[0], zoom_delta, pad),
         transform(frame_[1], zoom_delta, pad),

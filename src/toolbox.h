@@ -4,48 +4,24 @@
 #include <array>
 #include <cstddef>
 
-const int tile_size_ = 512;
 const int zoom_limit_ = 64;
-const int position_limit_ = 1000000000;
 const int draw_level_limit_ = 6;
-const int width_limit_ = 4;
+const double tile_size_ = 512.0;
+const double position_limit_ = 1000000000;
+const double width_limit_ = 4.0;
 
-std::array<std::array<int, 2>, 2> regionize(
-    const std::array<std::array<int, 2>, 2>& frame);
+using Point = std::array<double, 2>;
+using Rectangle = std::array<Point, 2>;
 
-std::array<std::array<int, 2>, 2> make_square(
-    const std::array<std::array<int, 2>, 2>& frame);
-
-bool check_touch(const std::array<std::array<int, 2>, 2>& first,
-    const std::array<std::array<int, 2>, 2>& second);
-
-std::array<int, 2> apply_zoom(const std::array<int, 2>& point,
-    const int& zoom_delta);
-
-std::array<int, 2> transform(const std::array<int, 2>& point,
-    const int& zoom_delta, const std::array<int, 2>& pad);
-
-double get_diameter(const std::array<std::array<int, 2>, 2>& frame);
-
-int get_area(const std::array<std::array<int, 2>, 2>& frame);
-
-double get_distance(const std::array<int, 2>& point1,
-    const std::array<int, 2>& point2);
-
-double get_angle(const std::array<int, 2>& point1,
-    const std::array<int, 2>& point2, const std::array<int, 2>& point3,
+Rectangle regionize(const Rectangle& frame);
+Point apply_zoom(const Point& point, const int& zoom);
+Point transform(const Point& point, const int& zoom, const Point& pad);
+double get_distance(const Point& point1, const Point& point2);
+double get_angle(const Point& point1, const Point& point2, const Point& point3,
     double* out_len1, double* out_len2);
-
-double get_angle(const std::array<int, 2>& vector);
-
-int get_rotation(const int& first_angle, const int& second_angle);
-
-std::array<int, 2> get_center(const std::array<std::array<int, 2>, 2>& frame);
-
-void extend_frame(std::array<std::array<int, 2>, 2>& frame,
-    const std::array<int, 2>& point);
-
-std::array<std::array<int, 2>, 2> initialize_frame(
-    const std::array<int, 2>& point1, const std::array<int, 2>& point2);
+double get_angle(const Point& vector);
+double get_rotation(const double& first_angle, const double& second_angle);
+void extend_frame(Rectangle& frame, const Point& point);
+Rectangle initialize_frame(const Point& point1, const Point& point2);
 
 #endif // THINKORA_SRC_TOOLBOX_H

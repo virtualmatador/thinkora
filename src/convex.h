@@ -6,32 +6,33 @@
 
 #include "json.h"
 
+#include "toolbox.h"
+
 class Convex
 {
 public:
     Convex(const jsonio::json& json);
-    Convex(const std::array<int, 2>& point,
-        const std::array<std::array<int, 2>, 2>& frame);
-    Convex(const std::vector<std::array<int, 2>>& points,
-        const std::size_t& begin, const std::size_t& end, const int& d_r,
-        const std::array<std::array<int, 2>, 2>& convex_frame,
-        const std::array<std::array<int, 2>, 2>& frame);
+    Convex(const Point& point,
+        const Rectangle& frame);
+    Convex(const std::vector<Point>& points, const std::size_t& begin,
+        const std::size_t& end, const double& d_r,
+        const Rectangle& convex_frame, const Rectangle& frame);
     ~Convex();
     double compare(const Convex& convex) const;
 
 private:
     bool b_a_b_;
-    int b_a_;
+    double b_a_;
     double b_x_;
     double b_y_;
     bool e_a_b_;
-    int e_a_;
+    double e_a_;
     double e_x_;
     double e_y_;
     bool d_a_b_;
-    int d_a_;
+    double d_a_;
     double d_l_;
-    int d_r_;
+    double d_r_;
     double f_x_;
     double f_y_;
     int n_b_;

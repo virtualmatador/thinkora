@@ -3,75 +3,29 @@
 
 #include "toolbox.h"
 
-std::array<std::array<int, 2>, 2> regionize(
-    const std::array<std::array<int, 2>, 2>& frame)
+Rectangle regionize(const Rectangle& frame)
 {
-    auto divide = [&](const int& position)
-    {
-        return position / tile_size_ - (position % tile_size_ < 0 ? 1 : 0);
-    };
     return
     {
-        divide(frame[0][0]),
-        divide(frame[0][1]),
-        divide(frame[1][0]),
-        divide(frame[1][1]),
+        std::floor(frame[0][0] / tile_size_),
+        std::ceil(frame[0][1] / tile_size_),
+        std::floor(frame[1][0] / tile_size_),
+        std::ceil(frame[1][1] / tile_size_),
     };
 }
 
-std::array<std::array<int, 2>, 2> make_square(
-    const std::array<std::array<int, 2>, 2>& frame)
+Point apply_zoom(const Point& point, const int& zoom)
 {
-    int d = (frame[1][0] - frame[0][0]) - (frame[1][1] - frame[0][1]);
-    if (d < 0)
+    Point dest;
+    if (zoom > 0)
     {
-        return
-        {
-            frame[0][0] + d / 2,
-            frame[0][1],
-            frame[1][0] - d / 2,
-            frame[1][1],
-        };
+        dest[0] = point[0] * std::pow(2.0, zoom);
+        dest[1] = point[1] * std::pow(2.0, zoom);
     }
-    else
+    else if (zoom < 0)
     {
-        return
-        {
-            frame[0][0],
-            frame[0][1] - d / 2,
-            frame[1][0],
-            frame[1][1] + d / 2,
-        };
-    }    
-}
-
-bool check_touch(const std::array<std::array<int, 2>, 2>& first,
-    const std::array<std::array<int, 2>, 2>& second)
-{
-    if ((first[0][0] > second[1][0] || second[0][0] > first[1][0]) ||
-        (first[0][1] > second[1][1] || second[0][1] > first[1][1]))
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
-}
-
-std::array<int, 2> apply_zoom(const std::array<int, 2>& point,
-    const int& zoom_delta)
-{
-    std::array<int, 2> dest;
-    if (zoom_delta > 0)
-    {
-        dest[0] = point[0] << zoom_delta;
-        dest[1] = point[1] << zoom_delta;
-    }
-    else if (zoom_delta < 0)
-    {
-        dest[0] = point[0] >> -zoom_delta;
-        dest[1] = point[1] >> -zoom_delta;
+        dest[0] = point[0] / std::pow(2.0, -zoom);
+        dest[1] = point[1] / std::pow(2.0, -zoom);
     }
     else
     {
@@ -80,36 +34,21 @@ std::array<int, 2> apply_zoom(const std::array<int, 2>& point,
     return dest;
 }
 
-std::array<int, 2> transform(const std::array<int, 2>& point,
-    const int& zoom_delta, const std::array<int, 2>& pad)
+Point transform(const Point& point, const int& zoom, const Point& pad)
 {
-    std::array<int, 2> transformed = apply_zoom(point, zoom_delta);
-        transformed[0] -= pad[0];
-        transformed[1] -= pad[1];
+    Point transformed = apply_zoom(point, zoom);
+    transformed[0] -= pad[0];
+    transformed[1] -= pad[1];
     return transformed;
 }
 
-double get_diameter(const std::array<std::array<int, 2>, 2>& frame)
+double get_distance(const Point& point1, const Point& point2)
 {
-    return std::pow(
-        std::pow(frame[1][0] - frame[0][0], 2) + 
-        std::pow(frame[1][1] - frame[0][1], 2), 0.5);
+    return std::pow(std::pow(point1[0] - point2[0], 2.0) +
+        std::pow(point1[1] - point2[1], 2.0), 0.5);
 }
 
-int get_area(const std::array<std::array<int, 2>, 2>& frame)
-{
-    return (frame[1][0] - frame[0][0]) * (frame[1][1] - frame[0][1]);
-}
-
-double get_distance(const std::array<int, 2>& point1,
-    const std::array<int, 2>& point2)
-{
-    return std::pow(std::pow(point1[0] - point2[0], 2) +
-        std::pow(point1[1] - point2[1], 2), 0.5);
-}
-
-double get_angle(const std::array<int, 2>& point1,
-    const std::array<int, 2>& point2, const std::array<int, 2>& point3,
+double get_angle(const Point& point1, const Point& point2, const Point& point3,
     double* out_len1, double* out_len2)
 {
     double len1 = get_distance(point1, point2);
@@ -127,32 +66,26 @@ double get_angle(const std::array<int, 2>& point1,
     return std::acos(dot_product / (len1 * len2));
 }
 
-double get_angle(const std::array<int, 2>& vector)
+double get_angle(const Point& vector)
 {
-    return std::atan2(double(vector[1]), double(vector[0])) * 180.0 / std::numbers::pi;
+    return std::atan2(vector[1], vector[0]) * 180.0 / std::numbers::pi;
 }
 
-int get_rotation(const int& first_angle, const int& second_angle)
+double get_rotation(const double& first_angle, const double& second_angle)
 {
-    int r = second_angle - first_angle;
-    if (r < -180)
+    double r = second_angle - first_angle;
+    if (r < -180.0)
     {
-        r += 360;
+        r += 360.0;
     }
-    else if (r > 180)
+    else if (r > 180.0)
     {
-        r -= 360;
+        r -= 360.0;
     }
     return r;
 }
 
-std::array<int, 2> get_center(const std::array<std::array<int, 2>, 2>& frame)
-{
-    return {(frame[0][0] + frame[1][0]) / 2, (frame[0][1] + frame[1][1]) / 2};
-}
-
-void extend_frame(std::array<std::array<int, 2>, 2>& frame,
-    const std::array<int, 2>& point)
+void extend_frame(Rectangle& frame, const Point& point)
 {
     if (frame[0][0] > point[0])
     {
@@ -162,24 +95,23 @@ void extend_frame(std::array<std::array<int, 2>, 2>& frame,
     {
         frame[0][1] = point[1];
     }
-    if (frame[1][0] < point[0] + 1)
+    if (frame[1][0] < point[0])
     {
-        frame[1][0] = point[0] + 1;
+        frame[1][0] = point[0];
     }
-    if (frame[1][1] < point[1] + 1)
+    if (frame[1][1] < point[1])
     {
-        frame[1][1] = point[1] + 1;
+        frame[1][1] = point[1];
     }
 }
 
-std::array<std::array<int, 2>, 2> initialize_frame(
-    const std::array<int, 2>& point1, const std::array<int, 2>& point2)
+Rectangle initialize_frame(const Point& point1, const Point& point2)
 {
     return
     {
         std::min(point1[0], point2[0]),
         std::min(point1[1], point2[1]),
-        std::max(point1[0], point2[0]) + 1,
-        std::max(point1[1], point2[1]) + 1,
+        std::max(point1[0], point2[0]),
+        std::max(point1[1], point2[1]),
     };
 }

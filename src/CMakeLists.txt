@@ -8,13 +8,13 @@ add_executable(thinkora
     board.cpp
     circle.cpp
     convex.cpp
+    dot.cpp
     fit.cpp
     guess.cpp
     line.cpp
     main.cpp
     ocr.cpp
     pattern.cpp
-    point.cpp
     result.cpp
     shape.cpp
     sketch.cpp

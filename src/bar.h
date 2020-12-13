@@ -24,7 +24,7 @@ private:
     void add_position();
     void add_path();
     void draw_line(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& width, const Shape::Style& style,
+        const double& width, const Shape::Style& style,
         const Gdk::RGBA& color);
     void set_zoom();
     void set_position();
@@ -40,7 +40,7 @@ private:
     Gtk::Label position_;
     Gtk::Label path_;
     Gdk::RGBA marker_color_;
-    int marker_width_;
+    double marker_width_;
     Shape::Style marker_style_;
     Board& board_;
 

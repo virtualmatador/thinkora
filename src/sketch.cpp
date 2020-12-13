@@ -7,12 +7,12 @@ void Sketch::set_sketch(int zoom)
     zoom_ = zoom;
     frame_ =
     {
-        std::numeric_limits<int>::max(), std::numeric_limits<int>::max(),
-        std::numeric_limits<int>::min(), std::numeric_limits<int>::min()
+        std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::min(), std::numeric_limits<double>::min()
     };
 }
 
-void Sketch::add_point(const std::array<int, 2>& point)
+void Sketch::add_point(const Point& point)
 {
     if (points_.empty() || points_.back() != point)
     {
@@ -26,7 +26,7 @@ void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
     birth_ = birth;
 }
 
-std::vector<std::array<int, 2>>& Sketch::get_points()
+std::vector<Point>& Sketch::get_points()
 {
     return points_;
 }
@@ -41,11 +41,11 @@ const int& Sketch::get_zoom() const
     return zoom_;
 }
 
-std::vector<std::array<int, 2UL>> Sketch::simplify() const
+std::vector<Point> Sketch::simplify() const
 {
-    double tolerance = get_diameter(frame_) / 24.0;
+    double tolerance = get_distance(frame_[0], frame_[1]) / 48.0;
     std::vector<std::tuple<double, double, std::size_t>> redondents;
-    std::vector<std::array<int, 2UL>> points = points_;
+    std::vector<Point> points = points_;
     do
     {
         redondents.clear();
@@ -85,7 +85,7 @@ std::vector<std::array<int, 2UL>> Sketch::simplify() const
 std::vector<Convex> Sketch::get_convexes() const
 {
     std::vector<Convex> convexes;
-    std::vector<std::array<int, 2UL>> points = simplify();
+    std::vector<Point> points = simplify();
     for (std::size_t end = 0; end < points.size();)
     {
         if (points.size() - end == 1)
@@ -95,7 +95,7 @@ std::vector<Convex> Sketch::get_convexes() const
         }
         else
         {
-            std::array<std::array<int, 2>, 2> convex_frame =
+            Rectangle convex_frame =
                 initialize_frame(points[end], points[end + 1]);
             if (points.size() - end == 2)
             {
@@ -153,9 +153,9 @@ Shape::Type Sketch::get_type() const
 }
 
 void Sketch::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& zoom_delta, const std::array<int, 2>& pad) const
+        const int& zoom_delta, const Point& pad) const
 {
-    std::vector<std::array<int, 2>> points;
+    std::vector<Point> points;
     for (const auto& point: points_)
     {
         points.emplace_back(transform(point, zoom_delta, pad));
@@ -165,7 +165,7 @@ void Sketch::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
         cr->set_line_cap(Cairo::LineCap::LINE_CAP_ROUND);
     }
     cr->move_to(points[0][0], points[0][1]);
-    for (int i = 0; i < points.size(); ++i)
+    for (std::size_t i = 0; i < points.size(); ++i)
     {
         cr->line_to(points[i][0], points[i][1]);
     }
@@ -187,8 +187,8 @@ void Sketch::read_details(std::istream& is)
     is >> size;
     for (std::size_t i = 0; i < size; ++i)
     {
-        int x, y;
-        is >> x >> y;
-        points_.push_back({x, y});
+        Point point;
+        is >> point[0] >> point[1];
+        points_.emplace_back(point);
     }
 }

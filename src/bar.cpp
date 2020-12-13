@@ -169,22 +169,22 @@ void Bar::add_line()
                     {
                         if (width == j + 1)
                         {
-                            color = Gdk::RGBA("#BBBBBB");
+                            color = Gdk::RGBA("#BBBBBBFF");
                         }
                         else
                         {
-                            color = Gdk::RGBA("#FFFFFF");
+                            color = Gdk::RGBA("#FFFFFFFF");
                         }
                     }
                     else
                     {
                         if (style == Shape::Style(j))
                         {
-                            color = Gdk::RGBA("#BBBBBB");
+                            color = Gdk::RGBA("#BBBBBBFF");
                         }
                         else
                         {
-                            color = Gdk::RGBA("#FFFFFF");
+                            color = Gdk::RGBA("#FFFFFFFF");
                         }
                     }                        
                     if (i == 0)
@@ -277,7 +277,7 @@ void Bar::add_path()
 }
 
 void Bar::draw_line(const Cairo::RefPtr<Cairo::Context>& cr,
-    const int& width, const Shape::Style& style, const Gdk::RGBA& color)
+    const double& width, const Shape::Style& style, const Gdk::RGBA& color)
 {
     cr->set_source_rgba(color.get_red(), color.get_green(), color.get_blue(),
         color.get_alpha());

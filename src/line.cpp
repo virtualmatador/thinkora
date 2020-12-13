@@ -2,7 +2,7 @@
 
 #include "line.h"
 
-void Line::set_line(const std::array<std::array<int, 2>, 2>& points)
+void Line::set_line(const Rectangle& points)
 {
     points_ = points;
     frame_ = initialize_frame(points_[0], points_[1]);
@@ -14,9 +14,9 @@ Shape::Type Line::get_type() const
 }
 
 void Line::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& zoom_delta, const std::array<int, 2>& pad) const
+        const int& zoom_delta, const Point& pad) const
 {
-    std::array<std::array<int, 2>, 2> points;
+    Point points[2];
     for (std::size_t i = 0; i < 2; ++i)
     {
         points[i] = transform(points_[i], zoom_delta, pad);

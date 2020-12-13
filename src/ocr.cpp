@@ -18,6 +18,9 @@
 Ocr::Ocr(Board& board)
     : run_{ true }
     , zoom_{ 0 }
+    , width_{ 0.0 }
+    , color_{ Gdk::RGBA("#000000FF") }
+    , style_{ Shape::Style::SIZE }
     , board_{ board }
 {
     for (auto& json_file: std::filesystem::directory_iterator(
@@ -88,7 +91,10 @@ void Ocr::run()
     jobs_lock_.unlock();
     if (sketch)
     {
-        if (zoom_ != sketch->get_zoom())
+        if (zoom_ != sketch->get_zoom() ||
+            width_ != sketch->get_width() ||
+            color_ != sketch->get_color() ||
+            style_ != sketch->get_style())
         {
             apply();
         }

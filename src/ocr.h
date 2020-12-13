@@ -40,6 +40,9 @@ private:
     std::list<const Sketch*> sources_;
     std::list<Shape*> results_;
     int zoom_;
+    double width_;
+    Gdk::RGBA color_;
+    Shape::Style style_;
     Board& board_;
 };
 

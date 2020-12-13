@@ -43,22 +43,22 @@ private:
     void add_reference(const int& zoom, const Shape* shape);
     void remove_reference(const int& zoom, const Shape* shape);
     void clamp_position();
-    bool check_zoom(const int& zoom, const std::array<int, 2>& center) const;
+    bool check_zoom(const int& zoom, const Point& center) const;
     std::string choose_file(Gtk::FileChooserAction action) const;
-    std::array<int, 2> get_input_position(const int& x, const int& y) const;
+    Point get_input_position(const Point& point) const;
 
 private:
     int zoom_;
-    std::array<int, 2> center_;
+    Point center_;
     mutable bool modified_;
     Sketch* sketch_;
     std::map<int,
         std::map<std::pair<int, int>, std::set<const Shape*>>> shapes_;
     mutable std::mutex shapes_lock_;
-    std::array<int, 2> center_pre_pad_;
-    std::array<int, 2> mouse_position_;
-    std::array<int, 2> mouse_pre_pad_;
-    std::stack<std::array<int, 2>> zoom_lag_;
+    Point center_pre_pad_;
+    Point mouse_position_;
+    Point mouse_pre_pad_;
+    std::stack<Point> zoom_lag_;
     int mouse_button_;
     Ocr ocr_;
     Bar& bar_;

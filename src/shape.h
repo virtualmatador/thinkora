@@ -8,13 +8,15 @@
 
 #include <gtkmm.h>
 
+#include "toolbox.h"
+
 class Shape
 {
 public:
     enum class Type
     {
         SKETCH,
-        POINT,
+        DOT,
         LINE,
         CIRCLE,
         TEXT,
@@ -34,15 +36,14 @@ public:
 public:
     Shape();
     Shape(const Shape* shape);
-    Shape(const int& line_width, const Gdk::RGBA& color, const Style& style);
+    Shape(const double& width, const Gdk::RGBA& color, const Style& style);
     virtual ~Shape();
-    const int& get_line_width() const;
+    const double& get_width() const;
     const Gdk::RGBA& get_color() const;
     const Style& get_style() const;
-    const std::array<std::array<int, 2>, 2>& get_frame() const;
-    void draw(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& zoom_delta, const std::array<int, 2>& pad) const;
-    bool match_style(const Shape* shape) const;
+    const Rectangle& get_frame() const;
+    void draw(const Cairo::RefPtr<Cairo::Context>& cr, const int& zoom_delta,
+        const Point& pad) const;
 
 private:
     void write(std::ostream& os) const;
@@ -53,7 +54,7 @@ public:
 
 private:
     virtual void draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& zoom_delta, const std::array<int, 2>& pad) const = 0;
+        const int& zoom_delta, const Point& pad) const = 0;
     virtual void write_dtails(std::ostream& os) const = 0;
     virtual void read_details(std::istream& is) = 0;
 
@@ -61,12 +62,12 @@ public:
     static void fill_dashes(const int& thickness_limit);
 
 private:
-    int line_width_;
+    double width_;
     Gdk::RGBA color_;
     Style style_;
 
 protected:
-    std::array<std::array<int, 2>, 2> frame_;
+    Rectangle frame_;
 
 private:
     friend std::ostream& operator<<(std::ostream& os, const Shape& shape);

@@ -6,7 +6,7 @@
 #include "bar.h"
 #include "circle.h"
 #include "line.h"
-#include "point.h"
+#include "dot.h"
 #include "toolbox.h"
 
 #include "board.h"
@@ -15,12 +15,12 @@ std::vector<std::vector<std::vector<double>>> Board::dashes_;
 
 Board::Board(Bar& bar)
     : zoom_{ 0 }
-    , center_{ 0, 0 }
+    , center_{ 0.0, 0.0 }
     , modified_{ false }
     , sketch_{ nullptr }
-    , center_pre_pad_{ 0, 0 }
-    , mouse_position_{ 0, 0 }
-    , mouse_pre_pad_{ 0, 0 }
+    , center_pre_pad_{ 0.0, 0.0 }
+    , mouse_position_{ 0.0, 0.0 }
+    , mouse_pre_pad_{ 0.0, 0.0 }
     , mouse_button_{ 0 }
     , ocr_{ *this }
     , bar_{ bar }
@@ -247,7 +247,7 @@ void Board::push_sketches(const Job* job,
     std::function<void(Sketch&)> pusher) const
 {
     std::set<const Sketch*> listed;
-    std::vector<std::array<std::array<int, 2>, 2>> jobs;
+    std::vector<Rectangle> jobs;
     jobs.emplace_back(job->get_frame());
     for (std::size_t i = 0; i < jobs.size(); ++i)
     {
@@ -276,9 +276,9 @@ void Board::add_reference(const int& zoom, const Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
     auto& layer = shapes_[zoom];
-    for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
+    for (int x = frame[0][0]; x <= frame[1][0]; ++x)
     {
-        for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
+        for (int y = frame[0][1]; y <= frame[1][1]; ++y)
         {
             layer[{x, y}].insert(shape);
         }
@@ -289,9 +289,9 @@ void Board::remove_reference(const int& zoom, const Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
     auto layer = shapes_.find(zoom);
-    for (auto x = frame[0][0]; x <= frame[1][0]; ++x)
+    for (int x = frame[0][0]; x <= frame[1][0]; ++x)
     {
-        for (auto y = frame[0][1]; y <= frame[1][1]; ++y)
+        for (int y = frame[0][1]; y <= frame[1][1]; ++y)
         {
             auto region = layer->second.find({x, y});
             region->second.erase(shape);
@@ -312,7 +312,7 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     cr->set_source_rgb(0.0, 0.0, 0.0);
     cr->paint();
     const auto allocation = get_allocation();
-    std::array<std::array<int, 2>, 2> area = 
+    Rectangle area = 
     {{
         {
             center_[0] - allocation.get_width() / 2,
@@ -327,7 +327,7 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     for (int zoom_delta = draw_level_limit_; zoom_delta >= -draw_level_limit_;
         --zoom_delta)
     {
-        std::array<std::array<int, 2>, 2> view;
+        Rectangle view;
         view[0] = apply_zoom(area[0], -zoom_delta);
         view[1] = apply_zoom(area[1], -zoom_delta);
         view = regionize(view);
@@ -335,9 +335,9 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
         auto layer = shapes_.find(zoom_ - zoom_delta);
         if (layer != shapes_.end())
         {
-            for (auto x = view[0][0]; x <= view[1][0]; ++x)
+            for (int x = view[0][0]; x <= view[1][0]; ++x)
             {
-                for (auto y = view[0][1]; y <= view[1][1]; ++y)
+                for (int y = view[0][1]; y <= view[1][1]; ++y)
                 {
                     auto shapeset = layer->second.find({x, y});
                     if (shapeset != layer->second.end())
@@ -382,7 +382,7 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
             mouse_button_ = 2;
             bar_.set_sensitive(false);
             center_pre_pad_ = center_;
-            mouse_pre_pad_ = {int(button_event->x), int(button_event->y)};
+            mouse_pre_pad_ = { button_event->x, button_event->y };
             redraw(true);
         }
         return true;
@@ -394,23 +394,26 @@ bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
 {
     if (mouse_button_ == 1)
     {
-        mouse_position_ = get_input_position(motion_event->x, motion_event->y);
+        mouse_position_ = get_input_position(
+            { motion_event->x, motion_event->y });
         sketch_->add_point(mouse_position_);
         redraw(true);
     }
     else if (mouse_button_ == 2)
     {
         center_[0] = center_pre_pad_[0] + mouse_pre_pad_[0] -
-            int(motion_event->x);
+            motion_event->x;
         center_[1] = center_pre_pad_[1] + mouse_pre_pad_[1] -
-            int(motion_event->y);
+            motion_event->y;
         clamp_position();
-        mouse_position_ = get_input_position(motion_event->x, motion_event->y);
+        mouse_position_ = get_input_position(
+            { motion_event->x, motion_event->y });
         redraw(true);
     }
     else
     {
-        mouse_position_ = get_input_position(motion_event->x, motion_event->y);
+        mouse_position_ = get_input_position(
+            { motion_event->x, motion_event->y });
         bar_.redraw(false);
     }
     return true;
@@ -451,7 +454,7 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
     if (mouse_button_ == 0)
     {
         int zoom;
-        std::array<int, 2> center;
+        Point center;
         switch (scroll_event->direction)
         {
         case GdkScrollDirection::GDK_SCROLL_UP:
@@ -460,8 +463,8 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
             center[1] = center_[1] + mouse_position_[1];
             if (!zoom_lag_.empty())
             {
-                center[0] -= zoom_lag_.top()[0];
-                center[1] -= zoom_lag_.top()[1];
+                center[0] += zoom_lag_.top()[0];
+                center[1] += zoom_lag_.top()[1];
             }
             if (check_zoom(zoom, center))
             {
@@ -472,23 +475,27 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
                     zoom_lag_.pop();
                 }
                 mouse_position_ =
-                    get_input_position(scroll_event->x, scroll_event->y);
+                    get_input_position({ scroll_event->x, scroll_event->y });
                 redraw(true);
                 return true;
             }
             break;
         case GdkScrollDirection::GDK_SCROLL_DOWN:
             zoom = zoom_ - 1;
-            center[0] = center_[0] - mouse_position_[0] / 2;
-            center[1] = center_[1] - mouse_position_[1] / 2;
+            center[0] = center_[0] - mouse_position_[0] / 2.0;
+            center[1] = center_[1] - mouse_position_[1] / 2.0;
             if (check_zoom(zoom, center))
             {
+                auto pre_center = center_;
                 zoom_ = zoom;
                 center_ = center;
-                zoom_lag_.push({mouse_position_[0] % 2,
-                    mouse_position_[1] % 2});
-                mouse_position_ =
-                    get_input_position(scroll_event->x, scroll_event->y);
+                mouse_position_ = get_input_position(
+                    { scroll_event->x, scroll_event->y });
+                zoom_lag_.push(
+                {
+                    pre_center[0] - (center_[0] + mouse_position_[0]),
+                    pre_center[1] - (center_[1] + mouse_position_[1]),
+                });
                 redraw(true);
                 return true;
             }
@@ -500,7 +507,8 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
 
 bool Board::on_enter_notify_event(GdkEventCrossing* crossing_event)
 {
-    mouse_position_ = get_input_position(crossing_event->x, crossing_event->y);
+    mouse_position_ = get_input_position(
+        { crossing_event->x, crossing_event->y });
     bar_.redraw(false);
     return true;
 }
@@ -640,17 +648,18 @@ void Board::clamp_position()
     center_[1] = std::min(center_[1], +position_limit_);
 }
 
-bool Board::check_zoom(const int& zoom, const std::array<int, 2>& center) const
+bool Board::check_zoom(const int& zoom, const Point& center) const
 {
     return center[0] >= -position_limit_ && center[0] <= position_limit_ &&
         center[1] >= -position_limit_ && center[1] <= position_limit_ &&
         zoom >= -zoom_limit_ && zoom <= zoom_limit_;
 }
 
-std::array<int, 2> Board::get_input_position(const int& x, const int& y) const
+Point Board::get_input_position(const Point& point) const
 {
     const auto allocation = get_allocation();
-    int xx = int(x - allocation.get_width() / 2) + center_[0];
-    int yy = int(y - allocation.get_height() / 2) + center_[1];
-    return {xx, yy};
+    return {
+        point[0] - allocation.get_width() / 2.0 + center_[0],
+        point[1] - allocation.get_height() / 2.0 + center_[1]
+    };
 }

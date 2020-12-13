@@ -1,8 +1,8 @@
 #include "toolbox.h"
 
-#include "point.h"
+#include "dot.h"
 
-void Point::set_point(const std::array<int, 2>& point)
+void Dot::set_dot(const Point& point)
 {
     point_ = point;
     frame_ =
@@ -12,13 +12,13 @@ void Point::set_point(const std::array<int, 2>& point)
     };
 }
 
-Shape::Type Point::get_type() const
+Shape::Type Dot::get_type() const
 {
-    return Type::POINT;
+    return Type::DOT;
 }
 
-void Point::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& zoom_delta, const std::array<int, 2>& pad) const
+void Dot::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
+        const int& zoom_delta, const Point& pad) const
 {
     auto point = transform(point_, zoom_delta, pad);
     cr->set_line_cap(Cairo::LineCap::LINE_CAP_ROUND);
@@ -27,12 +27,12 @@ void Point::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
     cr->stroke();
 }
 
-void Point::write_dtails(std::ostream& os) const
+void Dot::write_dtails(std::ostream& os) const
 {
     os << point_[0] << ' ' << point_[1] << std::endl;
 }
 
-void Point::read_details(std::istream& is)
+void Dot::read_details(std::istream& is)
 {
     is >> point_[0] >> point_[1];
 }

@@ -10,15 +10,15 @@ class Text: public Shape
 {
 public:
     using Shape::Shape;
-    void set_text(const Cairo::RefPtr<Cairo::Context>& cr, const std::array
-        <int, 2>& position, const int& height, const std::string& text);
+    void set_text(const Cairo::RefPtr<Cairo::Context>& cr,
+        const Point& position, const double& height, const std::string& text);
 
 public:
     Type get_type() const override;
 
 private:
     void draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& zoom_delta, const std::array<int, 2>& pad) const;
+        const int& zoom_delta, const Point& pad) const;
     void write_dtails(std::ostream& os) const;
     void read_details(std::istream& is);
 
