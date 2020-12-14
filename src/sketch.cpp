@@ -5,11 +5,7 @@
 void Sketch::set_sketch(int zoom)
 {
     zoom_ = zoom;
-    frame_ =
-    {
-        std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
-        std::numeric_limits<double>::min(), std::numeric_limits<double>::min()
-    };
+    frame_ = empty_frame();
 }
 
 void Sketch::add_point(const Point& point)
@@ -26,7 +22,7 @@ void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
     birth_ = birth;
 }
 
-std::vector<Point>& Sketch::get_points()
+const std::vector<Point>& Sketch::get_points() const
 {
     return points_;
 }
@@ -43,7 +39,7 @@ const int& Sketch::get_zoom() const
 
 std::vector<Point> Sketch::simplify() const
 {
-    double tolerance = get_distance(frame_[0], frame_[1]) / 48.0;
+    double tolerance = get_distance_point(frame_[0], frame_[1]) / 48.0;
     std::vector<std::tuple<double, double, std::size_t>> redondents;
     std::vector<Point> points = points_;
     do

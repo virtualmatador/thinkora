@@ -6,16 +6,14 @@ include_directories(${GTKMM_INCLUDE_DIRS})
 add_executable(thinkora
     bar.cpp
     board.cpp
+    character.cpp
     circle.cpp
-    convex.cpp
     dot.cpp
-    fit.cpp
     guess.cpp
     line.cpp
     main.cpp
     ocr.cpp
     pattern.cpp
-    result.cpp
     shape.cpp
     sketch.cpp
     text.cpp

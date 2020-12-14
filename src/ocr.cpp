@@ -8,7 +8,6 @@
 #include "json.h"
 
 #include "board.h"
-#include "fit.h"
 #include "line.h"
 #include "shape.h"
 #include "toolbox.h"
@@ -21,19 +20,10 @@ Ocr::Ocr(Board& board)
     , width_{ 0.0 }
     , color_{ Gdk::RGBA("#000000FF") }
     , style_{ Shape::Style::SIZE }
+    , patterns_{ read_json<Pattern>("../language/patterns") }
+    , characters_{ read_json<Character>("../language/characters") }
     , board_{ board }
 {
-    for (auto& json_file: std::filesystem::directory_iterator(
-        "../language/patterns"))
-    {
-        std::fstream json_reader(json_file.path());
-        jsonio::json json_pattern;
-        json_reader >> json_pattern;
-        if (json_pattern.completed())
-        {
-            patterns_.emplace_back(json_file.path().stem(), json_pattern);
-        }
-    }
     thread_ = std::thread([this]()
     {
         while (run_)
@@ -106,14 +96,14 @@ void Ocr::run()
         bool match = false;
         for (const auto& pattern : patterns_)
         {
-            //auto similarity = pattern.match(convexes);
-            //if (similarity > 0.0)
+            auto diff = pattern.match(points, sketch->get_frame());
+            if (diff < 0.4)
             {
                 match = true;
                 for (auto& guess : guesses_)
                 {
-                    //guesses.emplace_back(guess->extend(
-                    //    pattern.get_name(), sketch->get_frame(), similarity));
+                    guesses.emplace_back(guess->extend(
+                        pattern.get_name(), sketch, diff));
                 }
             }
         }
@@ -179,85 +169,19 @@ void Ocr::apply()
     results_.clear();
 }
 
-/*
-bool Ocr::do_job()
+template<class T>
+std::vector<T> Ocr::read_json(const std::filesystem::path& path)
 {
-    std::shared_ptr<Job> job;
+    std::vector<T> results;
+    for (auto& json_file: std::filesystem::directory_iterator(path))
     {
-        std::lock_guard<std::mutex> lock{jobs_lock_};
-        if (jobs_.size() > 0)
+        std::fstream json_reader(json_file.path());
+        jsonio::json json_data;
+        json_reader >> json_data;
+        if (json_data.completed())
         {
-            job = std::move(jobs_.front());
-            jobs_.pop_front();
+            results.emplace_back(json_file.path().stem(), json_data);
         }
     }
-    if (job)
-    {
-        auto time = std::chrono::steady_clock::now();
-        if (time - job->sketch_->get_birth() > std::chrono::operator""ms(delay_ms_))
-        {
-            job->process();
-            std::list<std::shared_ptr<Job>> partial_jobs;
-            if (job->is_simple())
-            {
-                job->choice_ = 0;
-            }
-            // else if (job->need_base_line())
-            // {
-            //     // TODO get base line from left or right
-            //     // Choose between lowercase and uppercase
-            // }
-            else if (!combine(job, partial_jobs))
-            {
-                return false;
-            }
-            board_->apply_ocr(job, partial_jobs);
-            if (job)
-            {
-                partial_jobs_.emplace_back(std::move(job));
-            }
-            for (auto& partial_job: partial_jobs)
-            {
-                partial_jobs_.emplace_back(std::move(partial_job));
-            }
-            return false;
-        }
-        // modify using sticky points
-        // create sticky points
-        return true;
-    }
-    else
-    {
-        // TODO check all partial_jobs can be deleted from board
-        
-        // while (!partial_jobs_.empty())
-        // {
-        //     job = &partial_jobs_.front();
-        //     job->choice_ = std::size_t(-1);
-        //     if (board_->replace_sketches(job, nullptr, job->get_result()))
-        //     {
-        //         partial_jobs_.pop_front();
-        //     }
-        //     else
-        //     {
-        //         std::lock_guard<std::mutex> lock{jobs_lock_};
-        //         jobs_.splice(jobs_.end(), partial_jobs_, partial_jobs_.begin());
-        //     }
-        // }
-        return true;
-    }
+    return results;
 }
-
-bool Ocr::combine(std::shared_ptr<Job>& job,
-    std::list<std::shared_ptr<Job>>& partial_jobs)
-{
-    // TODO mix jobs together
-    // if ()
-    {
-        std::lock_guard<std::mutex> lock{jobs_lock_};
-        jobs_.emplace_back(std::move(job));
-        return false;
-    }
-    return true;
-}
-*/

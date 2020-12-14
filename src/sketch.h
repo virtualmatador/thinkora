@@ -6,8 +6,6 @@
 #include <cstddef>
 #include <vector>
 
-#include "convex.h"
-#include "fit.h"
 #include "pattern.h"
 #include "shape.h"
 
@@ -18,7 +16,7 @@ public:
     void set_sketch(int zoom);
     void add_point(const Point& point);
     void set_birth(const std::chrono::steady_clock::time_point& birth);
-    std::vector<Point>& get_points();
+    const std::vector<Point>& get_points() const;
     const std::chrono::steady_clock::time_point& get_birth() const;
     const int& get_zoom() const;
     std::vector<Point> simplify() const;
@@ -28,9 +26,9 @@ public:
 
 private:
     void draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
-        const int& zoom_delta, const Point& pad) const;
-    void write_dtails(std::ostream& os) const;
-    void read_details(std::istream& is);
+        const int& zoom_delta, const Point& pad) const override;
+    void write_dtails(std::ostream& os) const override;
+    void read_details(std::istream& is) override;
 
 private:
     std::vector<Point> points_;

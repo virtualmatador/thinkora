@@ -8,6 +8,7 @@
 #include <mutex>
 #include <thread>
 
+#include "character.h"
 #include "guess.h"
 #include "pattern.h"
 #include "shape.h"
@@ -25,11 +26,13 @@ public:
     void apply();
 
 private:
-    std::vector<Pattern> read_patterns(std::filesystem::path path);
+    template<class T>
+    static std::vector<T> read_json(const std::filesystem::path& path);
     void run();
 
 private:
-    std::vector<Pattern> patterns_;
+    const std::vector<Pattern> patterns_;
+    const std::vector<Character> characters_;
     std::thread thread_;
     std::atomic<bool> run_;
     std::condition_variable jobs_condition_;
