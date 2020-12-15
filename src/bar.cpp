@@ -169,22 +169,22 @@ void Bar::add_line()
                     {
                         if (width == j + 1)
                         {
-                            color = Gdk::RGBA("#BBBBBBFF");
+                            color = Gdk::RGBA("#BBBBBB");
                         }
                         else
                         {
-                            color = Gdk::RGBA("#FFFFFFFF");
+                            color = Gdk::RGBA("#FFFFFF");
                         }
                     }
                     else
                     {
                         if (style == Shape::Style(j))
                         {
-                            color = Gdk::RGBA("#BBBBBBFF");
+                            color = Gdk::RGBA("#BBBBBB");
                         }
                         else
                         {
-                            color = Gdk::RGBA("#FFFFFFFF");
+                            color = Gdk::RGBA("#FFFFFF");
                         }
                     }                        
                     if (i == 0)

@@ -3,7 +3,8 @@
 Character::Character(const std::string& name, const jsonio::json& character)
     : name_{ name }
 {
-    for (const auto& pattern : character.get_array())
+    character_ = character["character"].get_string().front();
+    for (const auto& pattern : character["patterns"].get_array())
     {
         patterns_.push_back({
             pattern["name"].get_string(),
@@ -25,3 +26,14 @@ std::size_t Character::get_size() const
 {
     return patterns_.size();
 }
+
+const std::vector<std::pair<std::string, Rectangle>>& Character::get_patterns() const
+{
+    return patterns_;
+}
+
+char Character::get_character() const
+{
+    return character_;
+}
+

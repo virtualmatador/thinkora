@@ -2,20 +2,12 @@
 
 #include "text.h"
 
-void Text::set_text(const Cairo::RefPtr<Cairo::Context>& cr,
-    const Point& position, const double& height, const std::string& text)
+void Text::set_text(const std::string& text, const double& height,
+    const Rectangle& frame)
 {
     text_ = text;
-    double font_size = height * 1.25;
-    Cairo::TextExtents extents;
-    cr->set_font_size(font_size);
-    cr->get_text_extents(text_, extents);
-    height_ = font_size / extents.height;
-    frame_ =
-    {
-        position,
-        position[0] + extents.width, position[1] + extents.height
-    };
+    height_ = height;
+    frame_ = frame;
 }
 
 Shape::Type Text::get_type() const

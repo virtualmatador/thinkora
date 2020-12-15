@@ -39,7 +39,7 @@ Shape* Shape::create_shape(const Shape::Type& type)
 
 Shape::Shape()
     : width_{ 1.0 }
-    , color_{ Gdk::RGBA("#FFFFFFFF") }
+    , color_{ Gdk::RGBA("#FFFFFF") }
     , style_{ Style::SOLID }
 {
 }

@@ -61,6 +61,7 @@ private:
     std::stack<Point> zoom_lag_;
     int mouse_button_;
     Ocr ocr_;
+    Glib::Dispatcher queue_draw_;
     Bar& bar_;
 
 public:

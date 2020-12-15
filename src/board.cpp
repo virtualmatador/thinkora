@@ -44,6 +44,7 @@ Board::Board(Bar& bar)
             {1.0 * i, 4.0 * i},
         }));
     }
+    queue_draw_.connect(sigc::mem_fun(*this, &Widget::queue_draw));
 }
 
 Board::~Board()
@@ -90,7 +91,7 @@ void Board::apply_ocr(const std::list<const Sketch*>& sources, int zoom,
         add_reference(zoom, result);
     }
     shapes_lock_.unlock();
-    queue_draw();
+    queue_draw_();
 }
 
 void Board::clear_data()

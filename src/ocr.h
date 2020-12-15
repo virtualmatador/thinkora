@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <filesystem>
 #include <list>
+#include <memory>
 #include <mutex>
 #include <thread>
 
@@ -26,20 +27,23 @@ public:
     void apply();
 
 private:
-    template<class T>
-    static std::vector<T> read_json(const std::filesystem::path& path);
     void run();
+    template<class T>
+    static std::vector<T> read_json(const std::string& folder);
+    static std::vector<Pattern> link_patterns(std::vector<Pattern> patterns,
+        const std::vector<Character>& characters);
 
 private:
-    const std::vector<Pattern> patterns_;
     const std::vector<Character> characters_;
+    const std::vector<Pattern> patterns_;
     std::thread thread_;
     std::atomic<bool> run_;
     std::condition_variable jobs_condition_;
     std::mutex jobs_lock_;
     std::list<const Sketch*> jobs_;
     std::mutex working_lock_;
-    std::list<Guess*> guesses_;
+    std::shared_ptr<Guess> head_guess_;
+    std::list<std::shared_ptr<Guess>> guesses_;
     std::list<const Sketch*> sources_;
     std::list<Shape*> results_;
     int zoom_;

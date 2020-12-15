@@ -21,6 +21,22 @@ Pattern::~Pattern()
 {
 }
 
+void Pattern::add_character(const Character& character, std::size_t index)
+{
+    characters_.emplace_back(character, index);
+}
+
+const std::string& Pattern::get_name() const
+{
+    return name_;
+}
+
+const std::vector<std::pair<const Character&, std::size_t>>&
+    Pattern::get_characters() const
+{
+    return characters_;
+}
+
 double Pattern::match(
     const std::vector<Point>& points, const Rectangle& frame) const
 {
@@ -31,10 +47,10 @@ double Pattern::match(
         (frame[1][0] - frame[0][0]);
     if (ratio < 2.5 && ratio > 0.4)
     {
-        std::vector<Point> points;
+        std::vector<Point> pts;
         for (const auto& point : points)
         {
-            points.push_back(
+            pts.push_back(
             {
                 (point[0] - frame[0][0]) * (frame_[1][0] - frame_[0][0]) /
                     (frame[1][0] - frame[0][0]) + frame_[0][0],
@@ -42,18 +58,14 @@ double Pattern::match(
                     (frame[1][1] - frame[0][1]) + frame_[0][1],
             });
         }
-        return (compare(points, points_) + compare(points_, points)) /
-            get_distance_point(frame_[0], frame_[1]);
+        return (compare(pts, points_) + compare(points_, pts)) /
+            get_distance_point(frame_[0], frame_[1]) /
+            (pts.size() * points.size());
     }
     else
     {
-        return 0.0;
+        return 1.0;
     }
-}
-
-const std::string& Pattern::get_name() const
-{
-    return name_;
 }
 
 double Pattern::compare(const std::vector<Point>& points_a,
@@ -74,5 +86,5 @@ double Pattern::compare(const std::vector<Point>& points_a,
         }
         total_dist += dist_min;
     }
-    return total_dist / points_b.size();
+    return total_dist;
 }

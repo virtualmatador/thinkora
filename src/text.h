@@ -10,8 +10,8 @@ class Text: public Shape
 {
 public:
     using Shape::Shape;
-    void set_text(const Cairo::RefPtr<Cairo::Context>& cr,
-        const Point& position, const double& height, const std::string& text);
+    void set_text(const std::string& text, const double& height,
+        const Rectangle& frame);
 
 public:
     Type get_type() const override;

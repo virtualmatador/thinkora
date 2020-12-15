@@ -10,20 +10,24 @@
 #include "board.h"
 #include "line.h"
 #include "shape.h"
+#include "text.h"
 #include "toolbox.h"
 
 #include "ocr.h"
 
 Ocr::Ocr(Board& board)
-    : run_{ true }
+    : characters_{ read_json<Character>("characters") }
+    , patterns_{ link_patterns(read_json<Pattern>("segments"), characters_) }
+    , run_{ true }
+    , head_guess_{ std::make_shared<Guess>(nullptr, nullptr,
+        std::size_t(-1), Rectangle({0.0, 0.0, 0.0, 0.0}), 0.0) }
     , zoom_{ 0 }
     , width_{ 0.0 }
-    , color_{ Gdk::RGBA("#000000FF") }
+    , color_{ Gdk::RGBA("#000000") }
     , style_{ Shape::Style::SIZE }
-    , patterns_{ read_json<Pattern>("../language/patterns") }
-    , characters_{ read_json<Character>("../language/characters") }
     , board_{ board }
 {
+    guesses_.emplace_back(head_guess_);
     thread_ = std::thread([this]()
     {
         while (run_)
@@ -89,39 +93,56 @@ void Ocr::run()
             apply();
         }
         zoom_ = sketch->get_zoom();
+        width_ = sketch->get_width();
+        color_ = sketch->get_color();
+        style_ = sketch->get_style();
         sources_.emplace_back(sketch);
-        // Check for edge
-        decltype(guesses_) guesses;
         auto points = sketch->simplify();
-        bool match = false;
-        for (const auto& pattern : patterns_)
+        if (false) //edge)
         {
-            auto diff = pattern.match(points, sketch->get_frame());
-            if (diff < 0.4)
-            {
-                match = true;
-                for (auto& guess : guesses_)
-                {
-                    guesses.emplace_back(guess->extend(
-                        pattern.get_name(), sketch, diff));
-                }
-            }
-        }
-        if (match)
-        {
-            std::swap(guesses_, guesses);
+            // add edge
+            apply();
         }
         else
         {
-            auto start = points.front();
-            for (auto it = std::next(points.begin()); it != points.end(); ++it)
+            std::list<std::pair<const Pattern&, double>> patterns;
+            for (const auto& pattern : patterns_)
             {
-                auto ln = new Line(sketch);
-                ln->set_line({start[0], start[1], (*it)[0], (*it)[1]});
-                results_.emplace_back(ln);
-                start = *it;
+                auto diff = pattern.match(points, sketch->get_frame());
+                if (diff < 0.2)
+                {
+                    patterns.emplace_back(pattern, diff);
+                }
             }
-            apply();
+            bool match = false;
+            decltype(guesses_) guesses;
+            for (auto guess : guesses_)
+            {
+                auto child_guesses = guess->extend(*sketch, patterns);
+                if (!child_guesses.empty())
+                {
+                    match = true;
+                    guesses.merge(std::move(child_guesses));
+                }
+                else
+                {
+                    guesses.emplace_back(guess);
+                }                
+            }
+            std::swap(guesses_, guesses);
+            if (!match)
+            {
+                // TODO check with shapes
+                auto start = points.front();
+                for (auto it = std::next(points.begin()); it != points.end(); ++it)
+                {
+                    auto ln = new Line(sketch);
+                    ln->set_line({start[0], start[1], (*it)[0], (*it)[1]});
+                    results_.emplace_back(ln);
+                    start = *it;
+                }
+                apply();
+            }
         }
     }
     else
@@ -130,26 +151,6 @@ void Ocr::run()
     }
     
     /*
-    bool incomplete = false;
-    double best_score = 0;
-    const Guess* best_guess = nullptr;
-    for (const auto& guess : guesses_)
-    {
-        if (guess.is_complete())
-        {
-            if (best_score < guess.get_score())
-            {
-                best_score = guess.get_score();
-                best_guess = &guess;
-            }
-        }
-        else
-        {
-            incomplete = true;
-            break;
-        }
-
-    }
     if (!incomplete)
     {
         apply(*best_guess);
@@ -161,17 +162,51 @@ void Ocr::run()
 
 void Ocr::apply()
 {
-    // TODO apply to results
+    double best_diff = std::numeric_limits<double>::max();
+    bool is_complete = false;
+    std::shared_ptr<Guess> best_guess;
+    for (const auto& guess : guesses_)
+    {
+        if (!is_complete || guess->is_complete())
+        {
+            if (best_diff > guess->get_diff())
+            {
+                best_diff = guess->get_diff();
+                is_complete = guess->is_complete();
+                best_guess = guess;
+            }
+        }
+    }
+    std::string text;
+    Rectangle frame;
+    while(best_guess)
+    {
+        if (best_guess->is_complete() && best_guess->get_parent())
+        {
+            text += best_guess->get_character();
+            frame = best_guess->get_frame();
+        }
+        best_guess = best_guess->get_parent();
+    }
+    if (!text.empty())
+    {
+        text.reserve();
+        Text* txt = new Text(width_, color_, style_);
+        // TODO calc size and frame
+        txt->set_text(text, 1, frame);
+        results_.emplace_back(txt);
+    }
     guesses_.clear();
-    guesses_.emplace_back(Guess::start_node());
+    guesses_.emplace_back(head_guess_);
     board_.apply_ocr(sources_, zoom_, results_);
     sources_.clear();
     results_.clear();
 }
 
 template<class T>
-std::vector<T> Ocr::read_json(const std::filesystem::path& path)
+std::vector<T> Ocr::read_json(const std::string& folder)
 {
+    auto path = std::filesystem::path("../language") / folder;
     std::vector<T> results;
     for (auto& json_file: std::filesystem::directory_iterator(path))
     {
@@ -184,4 +219,23 @@ std::vector<T> Ocr::read_json(const std::filesystem::path& path)
         }
     }
     return results;
+}
+
+std::vector<Pattern> Ocr::link_patterns(std::vector<Pattern> patterns,
+    const std::vector<Character>& characters)
+{
+    std::map<std::string, Pattern&> map_patterns;
+    for (auto& pattern : patterns)
+    {
+        map_patterns.insert({ pattern.get_name(), pattern });
+    }
+    for (const auto& character : characters)
+    {
+        for (const auto& pt : character.get_patterns())
+        {
+            map_patterns.find(pt.first)->second.add_character(
+                character, std::distance(character.get_patterns().data(), &pt));
+        }
+    }
+    return patterns;
 }

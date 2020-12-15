@@ -1,9 +1,13 @@
-[
-    {
-        "name": "caret",
-        "left": 0.0,
-        "top": 0.0,
-        "right": 1.0,
-        "bottom": 0.25
-    }
-]
+{
+    "character": "^",
+    "patterns":
+    [
+        {
+            "name": "caret",
+            "left": 0.0,
+            "top": 0.0,
+            "right": 1.0,
+            "bottom": 0.25
+        }
+    ]
+}

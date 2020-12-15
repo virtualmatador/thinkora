@@ -122,21 +122,21 @@ double get_rotation(const double& first_angle, const double& second_angle)
 
 void extend_frame(Rectangle& frame, const Point& point)
 {
-    if (frame[0][0] > point[0] - 0.5)
+    if (frame[0][0] > point[0] - 0.1)
     {
-        frame[0][0] = point[0] - 0.5;
+        frame[0][0] = point[0] - 0.1;
     }
-    if (frame[0][1] > point[1] - 0.5)
+    if (frame[0][1] > point[1] - 0.1)
     {
-        frame[0][1] = point[1] - 0.5;
+        frame[0][1] = point[1] - 0.1;
     }
-    if (frame[1][0] < point[0] + 0.5)
+    if (frame[1][0] < point[0] + 0.1)
     {
-        frame[1][0] = point[0] + 0.5;
+        frame[1][0] = point[0] + 0.1;
     }
-    if (frame[1][1] < point[1] + 0.5)
+    if (frame[1][1] < point[1] + 0.1)
     {
-        frame[1][1] = point[1] + 0.5;
+        frame[1][1] = point[1] + 0.1;
     }
 }
 
@@ -156,6 +156,6 @@ Rectangle empty_frame()
     return
     {
         std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
-        std::numeric_limits<double>::min(), std::numeric_limits<double>::min()
+        -std::numeric_limits<double>::max(), -std::numeric_limits<double>::max()
     };
 }
