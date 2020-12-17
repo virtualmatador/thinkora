@@ -2,7 +2,6 @@
 #define THINKORA_SRC_SKETCH_H
 
 #include <array>
-#include <chrono>
 #include <cstddef>
 #include <vector>
 
@@ -15,9 +14,7 @@ public:
     using Shape::Shape;
     void set_sketch(int zoom);
     void add_point(const Point& point);
-    void set_birth(const std::chrono::steady_clock::time_point& birth);
     const std::vector<Point>& get_points() const;
-    const std::chrono::steady_clock::time_point& get_birth() const;
     const int& get_zoom() const;
     std::vector<Point> simplify() const;
 
@@ -32,7 +29,6 @@ private:
 
 private:
     std::vector<Point> points_;
-    std::chrono::steady_clock::time_point birth_;
     int zoom_;
 };
 

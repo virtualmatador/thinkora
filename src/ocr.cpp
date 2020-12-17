@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <list>
@@ -19,21 +20,26 @@ Ocr::Ocr(Board& board)
     : characters_{ read_json<Character>("characters") }
     , patterns_{ link_patterns(read_json<Pattern>("segments"), characters_) }
     , run_{ true }
-    , head_guess_{ std::make_shared<Guess>(nullptr, nullptr,
-        std::size_t(-1), Rectangle({0.0, 0.0, 0.0, 0.0}), 0.0) }
     , zoom_{ 0 }
     , width_{ 0.0 }
     , color_{ Gdk::RGBA("#000000") }
     , style_{ Shape::Style::SIZE }
     , board_{ board }
 {
-    guesses_.emplace_back(head_guess_);
+    guesses_.emplace_back(Guess::head());
     thread_ = std::thread([this]()
     {
         while (run_)
         {
+            std::chrono::steady_clock::time_point last_run{
+                std::chrono::steady_clock::now() };
             std::unique_lock<std::mutex> jobs_wait_lock{ jobs_lock_ };
-            jobs_condition_.wait_for(jobs_wait_lock, std::chrono::seconds(2));
+            jobs_condition_.wait_for(jobs_wait_lock, std::chrono::seconds(2),
+                [this, &last_run]()
+            {
+                return !run_ || !jobs_.empty() ||
+                    std::chrono::steady_clock::now() - last_run > std::chrono::seconds(2);
+            });
             if (run_)
             {
                 working_lock_.lock();
@@ -98,9 +104,10 @@ void Ocr::run()
         style_ = sketch->get_style();
         sources_.emplace_back(sketch);
         auto points = sketch->simplify();
-        if (false) //edge)
+        // TODO check for edge
+        if (false)
         {
-            // add edge
+            // TODO add edge
             apply();
         }
         else
@@ -109,95 +116,94 @@ void Ocr::run()
             for (const auto& pattern : patterns_)
             {
                 auto diff = pattern.match(points, sketch->get_frame());
-                if (diff < 0.2)
+                if (diff < 0.4)
                 {
                     patterns.emplace_back(pattern, diff);
                 }
             }
-            bool match = false;
-            decltype(guesses_) guesses;
+            auto guesses = extend(*sketch, patterns);
+            bool all_done = true;
             for (auto guess : guesses_)
             {
-                auto child_guesses = guess->extend(*sketch, patterns);
-                if (!child_guesses.empty())
+                if (!guess->is_done())
                 {
-                    match = true;
-                    guesses.merge(std::move(child_guesses));
+                    all_done = false;
+                    break;
                 }
-                else
-                {
-                    guesses.emplace_back(guess);
-                }                
+            }
+            if (all_done)
+            {
+                guesses.clear();
+                apply();
+                guesses = extend(*sketch, patterns);
             }
             std::swap(guesses_, guesses);
-            if (!match)
-            {
-                // TODO check with shapes
-                auto start = points.front();
-                for (auto it = std::next(points.begin()); it != points.end(); ++it)
-                {
-                    auto ln = new Line(sketch);
-                    ln->set_line({start[0], start[1], (*it)[0], (*it)[1]});
-                    results_.emplace_back(ln);
-                    start = *it;
-                }
-                apply();
-            }
         }
     }
     else
     {
         apply();
     }
-    
-    /*
-    if (!incomplete)
+}
+
+std::list<std::shared_ptr<Guess>> Ocr::extend(const Sketch& sketch,
+    const std::list<std::pair<const Pattern&, double>>& patterns)
+{
+    decltype(guesses_) guesses;
+    for (auto guess : guesses_)
     {
-        apply(*best_guess);
-        guesses_.clear();
-        guesses_.emplace_back(Guess::start_node());
+        auto child_guesses = guess->extend(sketch, patterns);
+        if (!child_guesses.empty())
+        {
+            guesses.merge(std::move(child_guesses));
+        }
+        else
+        {
+            guesses.emplace_back(guess);
+        }                
     }
-    */
+    return guesses;
 }
 
 void Ocr::apply()
 {
     double best_diff = std::numeric_limits<double>::max();
-    bool is_complete = false;
     std::shared_ptr<Guess> best_guess;
     for (const auto& guess : guesses_)
     {
-        if (!is_complete || guess->is_complete())
+        if (best_diff > guess->get_diff())
         {
-            if (best_diff > guess->get_diff())
-            {
-                best_diff = guess->get_diff();
-                is_complete = guess->is_complete();
-                best_guess = guess;
-            }
+            best_diff = guess->get_diff();
+            best_guess = guess;
         }
     }
+    std::list<Shape*> results_;
     std::string text;
-    Rectangle frame;
-    while(best_guess)
+    Rectangle frame = empty_frame();
+    while (best_guess->get_parent())
     {
-        if (best_guess->is_complete() && best_guess->get_parent())
+        // TODO post process (symetry, size, position) and draw unmatch sketches
+        if (best_guess->is_complete())
         {
+            // TODO check for shapes
             text += best_guess->get_character();
-            frame = best_guess->get_frame();
+            extend_frame(frame, best_guess->get_frame()[0]);
+            extend_frame(frame, best_guess->get_frame()[1]);
         }
         best_guess = best_guess->get_parent();
     }
     if (!text.empty())
     {
         text.reserve();
+        // TODO Check for matching text (width color style and size) in neighborhood, line or paragraph, then combine them
+        // TODO Check for shapes around to link their name
+        // TODO Adjust top and bottom
         Text* txt = new Text(width_, color_, style_);
-        // TODO calc size and frame
-        txt->set_text(text, 1, frame);
+        txt->set_text(text, frame);
         results_.emplace_back(txt);
     }
     guesses_.clear();
-    guesses_.emplace_back(head_guess_);
+    guesses_.emplace_back(Guess::head());
     board_.apply_ocr(sources_, zoom_, results_);
     sources_.clear();
     results_.clear();

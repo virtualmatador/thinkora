@@ -114,165 +114,6 @@ void Board::clear_data()
     shapes_lock_.unlock();
 }
 
-/*
-void Board::apply_ocr()
-{
-    shapes_lock_.lock();
-    sketches_lock_.lock();
-    std::vector<std::pair<int, Sketch*>> sketches;
-    for (auto it = partial_jobs.begin(); it != partial_jobs.end();)
-    {
-        if (it->use_count() == 2)
-        {
-            sketches.emplace_back((*it)->get_zoom(), (*it)->get_sketch());
-            it->reset();
-            it = partial_jobs.erase(it);
-        }
-        else
-        {
-            ++it;
-        }
-    }
-    if (job.use_count() == 2)
-    {
-        if (partial_jobs.empty())
-        {
-            add_reference(shapes_, job->get_zoom(), job->get_result());
-            // TODO Combine with text in left if size and position and style match
-            for (auto& sketch: sketches)
-            {
-                remove_reference(sketches_, sketch.first, sketch.second);
-            }
-            remove_reference(sketches_, job->get_zoom(), job->get_sketch());
-            job.reset();
-        }
-    }
-    else
-    {
-        remove_reference(sketches_, job->get_zoom(), job->get_sketch());
-        job.reset();
-    }
-    shapes_lock_.unlock();
-    sketches_lock_.unlock();
-}
-
-void Board::list_sketches(Job* job) const
-{
-    job->reset_outer_frame();
-    std::vector<Sketch> sketches;
-    sketches_lock_.lock();
-    cleared_ = false;
-    push_sketches(job, [&](Sketch& sketch)
-    {
-        sketch.set_listed(true);
-        sketches.emplace_back(sketch);
-        job->inflate(sketch.get_frame());
-    });
-    std::sort(sketches.begin(), sketches.end(),
-        [](const auto& a, const auto& b)
-    {
-        return a.get_birth() < b.get_birth();
-    });
-    sketches_lock_.unlock();
-    job->set_sketches(std::move(sketches));
-}
-
-bool Board::replace_sketches(const Job* job, const std::vector<Sketch>& sketches,
-    const std::vector<Shape*>& shapes)
-{
-    std::vector<Sketch*> latest_sketches;
-    shapes_lock_.lock();
-    sketches_lock_.lock();
-    bool found;
-    if (!cleared_)
-    {
-        push_sketches(job, [&](Sketch& sketch)
-        {
-            latest_sketches.emplace_back(&sketch);
-        });
-        std::sort(latest_sketches.begin(), latest_sketches.end(),
-            [](const auto& a, const auto& b)
-        {
-            return a->get_birth() < b->get_birth();
-        });
-        if (latest_sketches.size() == sketches.size())
-        {
-            found = true;
-            for (std::size_t i = 0; i < sketches.size(); ++i)
-            {
-                if (latest_sketches[i]->get_birth() != sketches[i].get_birth())
-                {
-                    found = false;
-                    break;
-                }
-            }
-        }
-        else
-        {
-            found = false;
-        }
-    }
-    else
-    {
-        found = false;
-    }
-    for (const auto& shape: shapes)
-    {
-        if (found)
-        {
-            add_reference(shapes_, job->zoom_, shape);
-        }
-        else
-        {
-            delete shape;
-        }    
-    }
-    shapes_lock_.unlock();
-    if (found)
-    {
-        for (const auto& sketch: latest_sketches)
-        {
-            remove_reference(sketches_, job->zoom_, sketch);
-            delete sketch;
-        }
-    }
-    sketches_lock_.unlock();
-    if (found)
-    {
-        queue_draw();
-    }
-    return found;
-}
-
-void Board::push_sketches(const Job* job,
-    std::function<void(Sketch&)> pusher) const
-{
-    std::set<const Sketch*> listed;
-    std::vector<Rectangle> jobs;
-    jobs.emplace_back(job->get_frame());
-    for (std::size_t i = 0; i < jobs.size(); ++i)
-    {
-        auto shapes = list_shapes(sketches_, job->get_zoom(), regionize(jobs[i]));
-        for (auto& shape: shapes)
-        {
-            if (job->match_style(shape))
-            {
-                auto sketch = static_cast<Sketch*>(shape);
-                if (listed.find(sketch) == listed.end())
-                {
-                    if (check_touch(jobs[i], sketch->get_frame()))
-                    {
-                        pusher(*sketch);
-                        listed.insert(sketch);
-                        jobs.emplace_back(sketch->get_frame());
-                    }
-                }
-            }
-        }
-    }
-}
-*/
-
 void Board::add_reference(const int& zoom, const Shape* shape)
 {
     auto frame = regionize(shape->get_frame());
@@ -427,7 +268,6 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
         if (mouse_button_ == 1)
         {
             mouse_button_ = 0;
-            sketch_->set_birth(std::chrono::steady_clock::now());
             shapes_lock_.lock();
             add_reference(zoom_, sketch_);
             shapes_lock_.unlock();
@@ -523,7 +363,6 @@ void Board::on_save()
         std::ofstream file(file_name);
         if (file)
         {
-            ocr_.apply();
             shapes_lock_.lock();
             file << shapes_.size() << std::endl;
             for (const auto [zoom, layer]: shapes_)
@@ -594,6 +433,7 @@ void Board::on_open()
             modified_ = false;
             shapes_lock_.unlock();
             redraw(true);
+            // TODO Pass sketches to ocr
         }
         else
         {

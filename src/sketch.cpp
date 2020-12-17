@@ -17,19 +17,9 @@ void Sketch::add_point(const Point& point)
     }
 }
 
-void Sketch::set_birth(const std::chrono::steady_clock::time_point& birth)
-{
-    birth_ = birth;
-}
-
 const std::vector<Point>& Sketch::get_points() const
 {
     return points_;
-}
-
-const std::chrono::steady_clock::time_point& Sketch::get_birth() const
-{
-    return birth_;
 }
 
 const int& Sketch::get_zoom() const
@@ -39,6 +29,7 @@ const int& Sketch::get_zoom() const
 
 std::vector<Point> Sketch::simplify() const
 {
+    // TODO simplify based on min dist
     double tolerance = get_distance_point(frame_[0], frame_[1]) / 48.0;
     std::vector<std::tuple<double, double, std::size_t>> redondents;
     std::vector<Point> points = points_;
@@ -77,72 +68,7 @@ std::vector<Point> Sketch::simplify() const
     } while (redondents.size() > 0);
     return points;
 }
-/*
-std::vector<Convex> Sketch::get_convexes() const
-{
-    std::vector<Convex> convexes;
-    std::vector<Point> points = simplify();
-    for (std::size_t end = 0; end < points.size();)
-    {
-        if (points.size() - end == 1)
-        {
-            convexes.emplace_back(points[0], frame_);
-            end = points.size();
-        }
-        else
-        {
-            Rectangle convex_frame =
-                initialize_frame(points[end], points[end + 1]);
-            if (points.size() - end == 2)
-            {
-                convexes.emplace_back(points, end, end + 2, 0.0, convex_frame,
-                    frame_);
-                end = points.size();
-            }
-            else
-            {
-                std::size_t begin = end;
-                extend_frame(convex_frame, points[begin + 2]);
-                double first_angle = get_angle(
-                {
-                    points[begin + 1][0] - points[begin][0],
-                    points[begin + 1][1] - points[begin][1]
-                });
-                double second_angle = get_angle(
-                {
-                    points[begin + 2][0] - points[begin + 1][0],
-                    points[begin + 2][1] - points[begin + 1][1]
-                });
-                int d_r = get_rotation(first_angle, second_angle);
-                bool clockwise = d_r < 0;
-                for (end = begin + 3; end < points.size(); ++end)
-                {
-                    first_angle = second_angle;
-                    second_angle = get_angle(
-                    {
-                        points[end][0] - points[end - 1][0],
-                        points[end][1] - points[end - 1][1]
-                    });
-                    int r = get_rotation(first_angle, second_angle);
-                    if (clockwise != (r < 0))
-                    {
-                        break;
-                    }
-                    d_r += r;
-                    extend_frame(convex_frame, points[end]);
-                }
-                convexes.emplace_back(points, begin, end, d_r, convex_frame,
-                    frame_);
-                if (end != points.size())
-                {
-                    --end;
-                }
-            }
-        }
-    }
-    return convexes;
-}
-*/
+
 Shape::Type Sketch::get_type() const
 {
     return Type::SKETCH;

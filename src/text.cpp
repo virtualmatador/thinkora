@@ -2,11 +2,9 @@
 
 #include "text.h"
 
-void Text::set_text(const std::string& text, const double& height,
-    const Rectangle& frame)
+void Text::set_text(const std::string& text, const Rectangle& frame)
 {
     text_ = text;
-    height_ = height;
     frame_ = frame;
 }
 
@@ -23,7 +21,8 @@ void Text::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
         transform(frame_[0], zoom_delta, pad),
         transform(frame_[1], zoom_delta, pad),
     };
-    cr->set_font_size(height_ * (frame[1][1] - frame[0][1]));
+    // TODO calculate font size more accurately
+    cr->set_font_size(frame[1][1] - frame[0][1]);
     cr->move_to(frame[0][0], frame[1][1]);
     cr->show_text(text_);
 }
@@ -32,7 +31,6 @@ void Text::write_dtails(std::ostream& os) const
 {
     os << text_.size();
     os.write(text_.c_str(), text_.size());
-    os << ' ' << height_ << std::endl;
 }
 
 void Text::read_details(std::istream& is)
@@ -43,5 +41,4 @@ void Text::read_details(std::istream& is)
     text_.reserve(size);
     std::copy_n(std::istreambuf_iterator(is), size, std::back_inserter(text_));
     is.ignore(1);
-    is >> height_;
 }

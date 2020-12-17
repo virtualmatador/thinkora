@@ -17,11 +17,15 @@ public:
     ~Guess();
     std::list<std::shared_ptr<Guess>> extend(const Sketch& sketch,
         const std::list<std::pair<const Pattern&, double>>& patterns);
+    bool is_done();
     std::shared_ptr<Guess> get_parent() const;
     const Rectangle& get_frame() const;
     double get_diff() const;
     bool is_complete() const;
-    char get_character() const;
+    const std::string& get_character() const;
+
+public:
+    static std::shared_ptr<Guess> head();
 
 private:
     std::shared_ptr<Guess> parent_;
@@ -32,7 +36,9 @@ private:
     int top_max_;
     int bottom_min_;
     int bottom_max_;
+    std::list<const Sketch*> unmatchs_;
     double diff_;
+    bool done_;
 };
 
 #endif // THINKORA_SRC_GUESS_H

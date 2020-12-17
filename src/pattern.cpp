@@ -70,16 +70,17 @@ double Pattern::match(
                         (frame[1][1] - frame[0][1]) + frame_[0][1],
                 });
             }
+            // TODO if path is polygon, arrange pts for best match
             auto s_it = pts.begin();
             auto p_it = points_.begin();
             auto p_it_next = std::next(p_it);
             for (;;)
             {
-                auto p_angel = get_angle({
+                auto p_angle = get_angle({
                     (*p_it_next)[0] - (*p_it)[0],
                     (*p_it_next)[1] - (*p_it)[1]});
                 auto p_it_next_next = std::next(p_it_next);
-                auto p_angle_next = p_angel;
+                auto p_angle_next = p_angle;
                 if (p_it_next_next != points_.end())
                 {
                     p_angle_next = get_angle({
@@ -98,7 +99,7 @@ double Pattern::match(
                     auto s_angle = get_angle({
                         (*s_it_next)[0] - (*s_it)[0],
                         (*s_it_next)[1] - (*s_it)[1]});
-                    if (std::abs(get_rotation(s_angle, p_angel)) >
+                    if (std::abs(get_rotation(s_angle, p_angle)) >
                         std::abs(get_rotation(s_angle, p_angle_next)))
                     {
                         break;

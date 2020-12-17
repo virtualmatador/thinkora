@@ -28,6 +28,8 @@ public:
 
 private:
     void run();
+    std::list<std::shared_ptr<Guess>> extend(const Sketch& sketch,
+        const std::list<std::pair<const Pattern&, double>>& patterns);
     template<class T>
     static std::vector<T> read_json(const std::string& folder);
     static std::vector<Pattern> link_patterns(std::vector<Pattern> patterns,
@@ -42,10 +44,8 @@ private:
     std::mutex jobs_lock_;
     std::list<const Sketch*> jobs_;
     std::mutex working_lock_;
-    std::shared_ptr<Guess> head_guess_;
     std::list<std::shared_ptr<Guess>> guesses_;
     std::list<const Sketch*> sources_;
-    std::list<Shape*> results_;
     int zoom_;
     double width_;
     Gdk::RGBA color_;
