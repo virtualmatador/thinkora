@@ -24,10 +24,6 @@ public:
         const std::vector<Point>& points, const Rectangle& frame) const;
 
 private:
-    double compare(const std::vector<Point>& points_a,
-        const std::vector<Point>& points_b) const;
-
-private:
     std::string name_;
     std::vector<Point> points_;
     Rectangle frame_;

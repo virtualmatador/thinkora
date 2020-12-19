@@ -28,7 +28,7 @@ public:
 
 private:
     void run();
-    std::list<std::shared_ptr<Guess>> extend(const Sketch& sketch,
+    std::list<std::shared_ptr<Guess>> extend(const Sketch* sketch,
         const std::list<std::pair<const Pattern&, double>>& patterns);
     template<class T>
     static std::vector<T> read_json(const std::string& folder);
@@ -45,7 +45,6 @@ private:
     std::list<const Sketch*> jobs_;
     std::mutex working_lock_;
     std::list<std::shared_ptr<Guess>> guesses_;
-    std::list<const Sketch*> sources_;
     int zoom_;
     double width_;
     Gdk::RGBA color_;

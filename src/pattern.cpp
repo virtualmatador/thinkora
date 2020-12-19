@@ -92,7 +92,7 @@ double Pattern::match(
                     (*p_it_next)[0] - (*p_it)[0] + (*s_it)[0],
                     (*p_it_next)[1] - (*p_it)[1] + (*s_it)[1],
                 };
-                total_dist += get_distance_point(*p_it, *s_it);
+                total_dist += get_distance(*p_it, *s_it);
                 auto s_it_next = std::next(s_it);
                 for (; s_it_next != pts.end(); ++s_it_next)
                 {
@@ -104,11 +104,11 @@ double Pattern::match(
                     {
                         break;
                     }
-                    total_dist += get_distance_line(
-                        *s_it_next, { p_v_start, p_v_end });
+                    total_dist += get_distance(*s_it_next,
+                        get_nearst(*s_it_next, { p_v_start, p_v_end }));
                     s_it = s_it_next;
                 }
-                total_dist += get_distance_point(*p_it_next, *s_it);
+                total_dist += get_distance(*p_it_next, *s_it);
                 if (p_it_next_next == points_.end())
                 {
                     break;
@@ -119,11 +119,11 @@ double Pattern::match(
             auto s_it_next = std::next(s_it);
             for (; s_it_next != pts.end(); ++s_it_next)
             {
-                total_dist += get_distance_point(*s_it, *s_it_next);
+                total_dist += get_distance(*s_it, *s_it_next);
                 s_it = s_it_next;
             }
             total_dist /= points_.size();
-            total_dist /= get_distance_point(frame_[0], frame_[1]);
+            total_dist /= get_distance(frame_[0], frame_[1]);
         }
         else
         {

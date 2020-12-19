@@ -12,10 +12,10 @@
 class Guess : public std::enable_shared_from_this<Guess>
 {
 public:
-    Guess(std::shared_ptr<Guess> parent, const Character* character,
-        std::size_t index, const Rectangle& frame, double diff);
+    Guess(std::shared_ptr<Guess> parent, const Sketch* sketch,
+        const Character* character, std::size_t index, double diff);
     ~Guess();
-    std::list<std::shared_ptr<Guess>> extend(const Sketch& sketch,
+    std::list<std::shared_ptr<Guess>> extend(const Sketch* sketch,
         const std::list<std::pair<const Pattern&, double>>& patterns);
     bool is_done();
     std::shared_ptr<Guess> get_parent() const;
@@ -29,9 +29,9 @@ public:
 
 private:
     std::shared_ptr<Guess> parent_;
+    const Sketch* sketch_;
     const Character* character_;
     std::size_t index_;
-    Rectangle frame_;
     int top_min_;
     int top_max_;
     int bottom_min_;

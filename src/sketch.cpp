@@ -29,43 +29,73 @@ const int& Sketch::get_zoom() const
 
 std::vector<Point> Sketch::simplify() const
 {
-    // TODO simplify based on min dist
-    double tolerance = get_distance_point(frame_[0], frame_[1]) / 48.0;
-    std::vector<std::tuple<double, double, std::size_t>> redondents;
-    std::vector<Point> points = points_;
-    do
+    std::vector<Point> points;
+    double tolerance = std::pow(get_distance(frame_[0], frame_[1]), 0.75) / 16.0;
+    double angle_max = 165.0;
+    auto it = points_.begin();
+    for (;;)
     {
-        redondents.clear();
-        for (std::size_t i = 2; i < points.size(); ++i)
+        double old_angle;
+        if (points.size() >= 3)
         {
-            double len1, len2;
-            auto angle = get_angle(points[i - 2], points[i - 1], points[i],
-                &len1, &len2);
-            if (std::pow(std::cos(angle) + 1.0, 0.6) * std::min(len1, len2) <
-                tolerance)
+            old_angle = get_angle(
+                *points.rbegin(),
+                *(points.rbegin() + 1),
+                *(points.rbegin() + 2));
+            if (std::abs(old_angle) > angle_max)
             {
-                redondents.emplace_back(angle, len1 * len2, i - 1);
-                ++i;
+                *(points.rbegin() + 1) = *(points.rbegin());
+                points.pop_back();
+                continue;
             }
         }
-        std::sort(redondents.begin(), redondents.end(), [](auto& a, auto&b)
+        if (it == points_.end())
         {
-            if (std::get<0>(a) == std::get<0>(b))
-            {
-                return std::get<1>(a) < std::get<1>(b);
-            }
-            return std::get<0>(a) > std::get<0>(b);
-        });
-        redondents.resize((redondents.size() + 1) / 2);
-        std::sort(redondents.begin(), redondents.end(), [](auto& a, auto&b)
-        {
-            return std::get<2>(a) > std::get<2>(b);
-        });
-        for (const auto& redondent: redondents)
-        {
-            points.erase(points.begin() + std::get<2>(redondent));
+            break;
         }
-    } while (redondents.size() > 0);
+        if (points.size() < 3)
+        {
+            points.push_back(*it++);
+            continue;
+        }
+        double new_angle = get_angle(
+            *it,
+            *points.rbegin(),
+            *(points.rbegin() + 1));
+        if (std::abs(new_angle) > angle_max)
+        {
+            points.back() = *it++;
+            continue;
+        }
+        if (old_angle * new_angle < 0.0)
+        {
+            Point mid
+            {
+                ((*it)[0] + (*(points.rbegin() + 2))[0]) / 2.0,
+                ((*it)[1] + (*(points.rbegin() + 2))[1]) / 2.0,
+            };
+            auto length = get_distance(*it, mid);
+            auto n1 = get_nearst(*(points.rbegin() + 1),
+                { *it, *(points.rbegin() + 2) });
+            if (get_distance(n1, *(points.rbegin() + 1)) > tolerance / 2.0 ||
+                get_distance(n1, mid) > length + tolerance)
+            {
+                points.push_back(*it++);
+                continue;
+            }
+            auto n2 = get_nearst(*points.rbegin(),
+                { *it, *(points.rbegin() + 2) });
+            if (get_distance(n2, *points.rbegin()) > tolerance / 2.0 ||
+                get_distance(n2, mid) > length + tolerance)
+            {
+                points.push_back(*it++);
+                continue;
+            }
+            points.pop_back();
+            points.pop_back();
+        }
+        points.push_back(*it++);
+    }
     return points;
 }
 

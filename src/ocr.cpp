@@ -1,3 +1,4 @@
+#include <array>
 #include <cstddef>
 #include <chrono>
 #include <filesystem>
@@ -102,8 +103,25 @@ void Ocr::run()
         width_ = sketch->get_width();
         color_ = sketch->get_color();
         style_ = sketch->get_style();
-        sources_.emplace_back(sketch);
+
+
+        std::list<Shape*> results;
+        std::list<const Sketch*> sources;
+        //sources.emplace_back(sketch);
         auto points = sketch->simplify();
+        auto pt_1 = points.front();
+        std::array<Gdk::RGBA, 2> colors { Gdk::RGBA("#FF0000"), Gdk::RGBA("#00FF00") };
+        for (auto it = std::next(points.begin()); it != points.end(); ++it)
+        {
+            auto ln = new Line(4.0, colors[std::distance(it, points.begin()) % colors.size()], Shape::Style::DOT_DOT);
+            ln->set_line({pt_1, *it});
+            results.emplace_back(ln);
+            pt_1 = *it;
+        }
+        board_.apply_ocr(sources, zoom_, results);
+        return;
+
+
         // TODO check for edge
         if (false)
         {
@@ -121,7 +139,7 @@ void Ocr::run()
                     patterns.emplace_back(pattern, diff);
                 }
             }
-            auto guesses = extend(*sketch, patterns);
+            auto guesses = extend(sketch, patterns);
             bool all_done = true;
             for (auto guess : guesses_)
             {
@@ -135,7 +153,7 @@ void Ocr::run()
             {
                 guesses.clear();
                 apply();
-                guesses = extend(*sketch, patterns);
+                guesses = extend(sketch, patterns);
             }
             std::swap(guesses_, guesses);
         }
@@ -146,7 +164,7 @@ void Ocr::run()
     }
 }
 
-std::list<std::shared_ptr<Guess>> Ocr::extend(const Sketch& sketch,
+std::list<std::shared_ptr<Guess>> Ocr::extend(const Sketch* sketch,
     const std::list<std::pair<const Pattern&, double>>& patterns)
 {
     decltype(guesses_) guesses;
@@ -177,7 +195,8 @@ void Ocr::apply()
             best_guess = guess;
         }
     }
-    std::list<Shape*> results_;
+    std::list<Shape*> results;
+    std::list<const Sketch*> sources;
     std::string text;
     Rectangle frame = empty_frame();
     while (best_guess->get_parent())
@@ -200,13 +219,11 @@ void Ocr::apply()
         // TODO Adjust top and bottom
         Text* txt = new Text(width_, color_, style_);
         txt->set_text(text, frame);
-        results_.emplace_back(txt);
+        results.emplace_back(txt);
     }
     guesses_.clear();
     guesses_.emplace_back(Guess::head());
-    board_.apply_ocr(sources_, zoom_, results_);
-    sources_.clear();
-    results_.clear();
+    board_.apply_ocr(sources, zoom_, results);
 }
 
 template<class T>

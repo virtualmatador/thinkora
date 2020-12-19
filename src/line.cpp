@@ -5,7 +5,9 @@
 void Line::set_line(const Rectangle& points)
 {
     points_ = points;
-    frame_ = initialize_frame(points_[0], points_[1]);
+    frame_ = empty_frame();
+    extend_frame(frame_, points_[0]);
+    extend_frame(frame_, points_[1]);
 }
 
 Shape::Type Line::get_type() const
