@@ -5,15 +5,18 @@
 #include <fstream>
 #include <list>
 #include <memory>
+#include <numbers>
 #include <vector>
 
 #include "json.h"
 
 #include "board.h"
-#include "line.h"
+#include "circle.h"
+#include "dot.h"
 #include "shape.h"
 #include "text.h"
 #include "toolbox.h"
+#include "wire.h"
 
 #include "ocr.h"
 
@@ -109,14 +112,11 @@ void Ocr::run()
         std::list<const Sketch*> sources;
         //sources.emplace_back(sketch);
         auto points = sketch->simplify();
-        auto pt_1 = points.front();
-        std::array<Gdk::RGBA, 2> colors { Gdk::RGBA("#FF0000"), Gdk::RGBA("#00FF00") };
-        for (auto it = std::next(points.begin()); it != points.end(); ++it)
+        for (auto it = points.begin() + 1; it != points.end(); ++it)
         {
-            auto ln = new Line(4.0, colors[std::distance(it, points.begin()) % colors.size()], Shape::Style::DOT_DOT);
-            ln->set_line({pt_1, *it});
+            auto ln = new Wire(4.0, Gdk::RGBA("#FF0000"), Shape::Style::DOT_DOT);
+            ln->set_wire({ *(it - 1), *it });
             results.emplace_back(ln);
-            pt_1 = *it;
         }
         board_.apply_ocr(sources, zoom_, results);
         return;
@@ -131,14 +131,14 @@ void Ocr::run()
         else
         {
             std::list<std::pair<const Pattern&, double>> patterns;
-            for (const auto& pattern : patterns_)
-            {
-                auto diff = pattern.match(points, sketch->get_frame());
-                if (diff < 0.4)
-                {
-                    patterns.emplace_back(pattern, diff);
-                }
-            }
+            // for (const auto& pattern : patterns_)
+            // {
+            //     auto diff = pattern.match(points, sketch->get_frame());
+            //     if (diff < 0.4)
+            //     {
+            //         patterns.emplace_back(pattern, diff);
+            //     }
+            // }
             auto guesses = extend(sketch, patterns);
             bool all_done = true;
             for (auto guess : guesses_)

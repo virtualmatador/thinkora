@@ -17,7 +17,7 @@ public:
     {
         SKETCH,
         DOT,
-        LINE,
+        WIRE,
         CIRCLE,
         TEXT,
     };

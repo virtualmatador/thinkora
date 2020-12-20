@@ -4,10 +4,6 @@
 #include <set>
 
 #include "bar.h"
-#include "circle.h"
-#include "line.h"
-#include "dot.h"
-#include "toolbox.h"
 
 #include "board.h"
 

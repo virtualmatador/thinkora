@@ -1,16 +1,16 @@
-#ifndef THINKORA_SRC_LINE_H
-#define THINKORA_SRC_LINE_H
+#ifndef THINKORA_SRC_WIRE_H
+#define THINKORA_SRC_WIRE_H
 
 #include <array>
 #include <vector>
 
 #include "shape.h"
 
-class Line: public Shape
+class Wire: public Shape
 {
 public:
     using Shape::Shape;
-    void set_line(const Rectangle& points);
+    void set_wire(const Rectangle& points);
 
 public:
     Type get_type() const override;
@@ -25,4 +25,4 @@ private:
     Rectangle points_;
 };
 
-#endif // THINKORA_SRC_LINE_H
+#endif // THINKORA_SRC_WIRE_H

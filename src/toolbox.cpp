@@ -51,10 +51,13 @@ double get_distance(const Point& point1, const Point& point2)
 Point get_nearst(const Point& point, const Rectangle& line)
 {
     Point pt;
-    auto k = ((line[1][1] - line[0][1]) * (point[0] - line[0][0]) - (line[1][0] - line[0][0]) * (point[1] - line[0][1])) /
-        (std::pow(line[1][1] - line[0][1], 2.0) + std::pow(line[1][0] - line[0][0], 2.0));
-    pt[0] = point[0] - k * (line[1][1]-line[0][1]);
-    pt[1] = point[1] + k * (line[1][0]-line[0][0]);
+    auto k = (
+        (line[1][1] - line[0][1]) * (point[0] - line[0][0]) -
+        (line[1][0] - line[0][0]) * (point[1] - line[0][1])) / (
+        std::pow(line[1][1] - line[0][1], 2.0) +
+        std::pow(line[1][0] - line[0][0], 2.0));
+    pt[0] = point[0] - k * (line[1][1] - line[0][1]);
+    pt[1] = point[1] + k * (line[1][0] - line[0][0]);
     return pt;
 }
 
@@ -64,12 +67,12 @@ double get_angle(const Point& point1, const Point& point2, const Point& point3)
         (point1[1] - point2[1]) * (point3[1] - point2[1]);
     double det = (point1[0] - point2[0]) * (point3[1] - point2[1]) -
         (point1[1] - point2[1]) * (point3[0] - point2[0]);
-    return std::atan2(det, dot) * 180.0 / std::numbers::pi;
+    return std::atan2(det, dot);
 }
 
 double get_angle(const Point& vector)
 {
-    return std::atan2(vector[1], vector[0]) * 180.0 / std::numbers::pi;
+    return std::atan2(vector[1], vector[0]);
 }
 
 double get_rotation(const double& first_angle, const double& second_angle)
@@ -110,7 +113,29 @@ Rectangle empty_frame()
 {
     return
     {
-        std::numeric_limits<double>::max(), std::numeric_limits<double>::max(),
-        -std::numeric_limits<double>::max(), -std::numeric_limits<double>::max()
+        std::numeric_limits<double>::max(),
+        std::numeric_limits<double>::max(),
+        -std::numeric_limits<double>::max(),
+        -std::numeric_limits<double>::max(),
+    };
+}
+
+Line perpendicular_bisector(const Rectangle& line)
+{
+    double a = line[1][0] - line[0][0];
+    double b = line[1][1] - line[0][1];
+    double c =
+        a * (line[0][0] + line[1][0]) / 2.0 +
+        b * (line[0][1] + line[1][1]) / 2.0;
+    return { a, b, c };
+}
+
+Point get_intersect(const Line& line_1, const Line& line_2)
+{
+    double determinant = line_1[0] * line_2[1] - line_2[0] * line_1[1];
+    return
+    {
+        (line_2[1] * line_1[2] - line_1[1] * line_2[2]) / determinant,
+        (line_1[0] * line_2[2] - line_2[0] * line_1[2]) / determinant,
     };
 }

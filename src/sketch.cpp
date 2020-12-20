@@ -1,3 +1,5 @@
+#include <numbers>
+
 #include "toolbox.h"
 
 #include "sketch.h"
@@ -31,9 +33,8 @@ std::vector<Point> Sketch::simplify() const
 {
     std::vector<Point> points;
     double tolerance = std::pow(get_distance(frame_[0], frame_[1]), 0.75) / 16.0;
-    double angle_max = 165.0;
-    auto it = points_.begin();
-    for (;;)
+    double angle_max = 3.0;
+    for (auto it = points_.begin();;)
     {
         double old_angle;
         if (points.size() >= 3)

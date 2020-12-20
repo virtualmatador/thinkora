@@ -4,9 +4,9 @@
 #include "board.h"
 #include "circle.h"
 #include "dot.h"
-#include "line.h"
 #include "sketch.h"
 #include "text.h"
+#include "wire.h"
 
 #include "shape.h"
 
@@ -21,8 +21,8 @@ Shape* Shape::create_shape(const Shape::Type& type)
     case Shape::Type::DOT:
         shape = new Dot;
         break;
-    case Shape::Type::LINE:
-        shape = new Line;
+    case Shape::Type::WIRE:
+        shape = new Wire;
         break;
     case Shape::Type::CIRCLE:
         shape = new Circle;

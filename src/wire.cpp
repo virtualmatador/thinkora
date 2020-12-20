@@ -1,8 +1,8 @@
 #include "toolbox.h"
 
-#include "line.h"
+#include "wire.h"
 
-void Line::set_line(const Rectangle& points)
+void Wire::set_wire(const Rectangle& points)
 {
     points_ = points;
     frame_ = empty_frame();
@@ -10,12 +10,12 @@ void Line::set_line(const Rectangle& points)
     extend_frame(frame_, points_[1]);
 }
 
-Shape::Type Line::get_type() const
+Shape::Type Wire::get_type() const
 {
-    return Type::LINE;
+    return Type::WIRE;
 }
 
-void Line::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
+void Wire::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
         const int& zoom_delta, const Point& pad) const
 {
     Point points[2];
@@ -28,7 +28,7 @@ void Line::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
     cr->stroke();
 }
 
-void Line::write_dtails(std::ostream& os) const
+void Wire::write_dtails(std::ostream& os) const
 {
     os <<
         points_[0][0] << ' ' <<
@@ -37,7 +37,7 @@ void Line::write_dtails(std::ostream& os) const
         points_[1][1] << std::endl;
 }
 
-void Line::read_details(std::istream& is)
+void Wire::read_details(std::istream& is)
 {
     is >>
         points_[0][0] >>

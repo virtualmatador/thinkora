@@ -10,7 +10,6 @@ add_executable(thinkora
     circle.cpp
     dot.cpp
     guess.cpp
-    line.cpp
     main.cpp
     ocr.cpp
     pattern.cpp
@@ -19,6 +18,7 @@ add_executable(thinkora
     text.cpp
     toolbox.cpp
     window.cpp
+    wire.cpp
 )
 add_dependencies("thinkora" "patterns")
 set_property(TARGET thinkora PROPERTY CXX_STANDARD 20)

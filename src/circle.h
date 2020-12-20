@@ -9,7 +9,8 @@ class Circle: public Shape
 {
 public:
     using Shape::Shape;
-    void set_circle(const Point& center, const double& radius);
+    void set_circle(const Point& center, const double& radius,
+        double angle_1, double angle_2);
 
 public:
     Type get_type() const override;
@@ -22,6 +23,8 @@ private:
 
 private:
     Rectangle circle_;
+    double angle_1_;
+    double angle_2_;
 };
 
 #endif // THINKORA_SRC_CIRCLE_H
