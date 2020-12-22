@@ -21,15 +21,24 @@
 #include "ocr.h"
 
 Ocr::Ocr(Board& board)
-    : characters_{ read_json<Character>("characters") }
-    , patterns_{ link_patterns(read_json<Pattern>("segments"), characters_) }
-    , run_{ true }
+    : run_{ true }
     , zoom_{ 0 }
     , width_{ 0.0 }
     , color_{ Gdk::RGBA("#000000") }
     , style_{ Shape::Style::SIZE }
     , board_{ board }
 {
+    auto path = std::filesystem::path("../language/characters");
+    for (auto& json_file: std::filesystem::directory_iterator(path))
+    {
+        std::fstream json_reader(json_file.path());
+        jsonio::json json_data;
+        json_reader >> json_data;
+        if (json_data.completed())
+        {
+            characters_.emplace_back(json_file.path().stem(), json_data);
+        }
+    }
     guesses_.emplace_back(Guess::head());
     thread_ = std::thread([this]()
     {
@@ -110,18 +119,8 @@ void Ocr::run()
 
         std::list<Shape*> results;
         std::list<const Sketch*> sources;
-        //sources.emplace_back(sketch);
+        sources.emplace_back(sketch);
         auto points = sketch->simplify();
-        for (auto it = points.begin() + 1; it != points.end(); ++it)
-        {
-            auto ln = new Wire(4.0, Gdk::RGBA("#FF0000"), Shape::Style::DOT_DOT);
-            ln->set_wire({ *(it - 1), *it });
-            results.emplace_back(ln);
-        }
-        board_.apply_ocr(sources, zoom_, results);
-        return;
-
-
         // TODO check for edge
         if (false)
         {
@@ -130,16 +129,8 @@ void Ocr::run()
         }
         else
         {
-            std::list<std::pair<const Pattern&, double>> patterns;
-            // for (const auto& pattern : patterns_)
-            // {
-            //     auto diff = pattern.match(points, sketch->get_frame());
-            //     if (diff < 0.4)
-            //     {
-            //         patterns.emplace_back(pattern, diff);
-            //     }
-            // }
-            auto guesses = extend(sketch, patterns);
+            auto convexes = Convex::get_convexes(points);
+            auto guesses = extend(sketch, convexes);
             bool all_done = true;
             for (auto guess : guesses_)
             {
@@ -153,7 +144,7 @@ void Ocr::run()
             {
                 guesses.clear();
                 apply();
-                guesses = extend(sketch, patterns);
+                guesses = extend(sketch, convexes);
             }
             std::swap(guesses_, guesses);
         }
@@ -165,12 +156,12 @@ void Ocr::run()
 }
 
 std::list<std::shared_ptr<Guess>> Ocr::extend(const Sketch* sketch,
-    const std::list<std::pair<const Pattern&, double>>& patterns)
+    const std::vector<Convex>& convexes)
 {
     decltype(guesses_) guesses;
     for (auto guess : guesses_)
     {
-        auto child_guesses = guess->extend(sketch, patterns);
+        auto child_guesses = guess->extend(sketch, convexes);
         if (!child_guesses.empty())
         {
             guesses.merge(std::move(child_guesses));
@@ -224,41 +215,4 @@ void Ocr::apply()
     guesses_.clear();
     guesses_.emplace_back(Guess::head());
     board_.apply_ocr(sources, zoom_, results);
-}
-
-template<class T>
-std::vector<T> Ocr::read_json(const std::string& folder)
-{
-    auto path = std::filesystem::path("../language") / folder;
-    std::vector<T> results;
-    for (auto& json_file: std::filesystem::directory_iterator(path))
-    {
-        std::fstream json_reader(json_file.path());
-        jsonio::json json_data;
-        json_reader >> json_data;
-        if (json_data.completed())
-        {
-            results.emplace_back(json_file.path().stem(), json_data);
-        }
-    }
-    return results;
-}
-
-std::vector<Pattern> Ocr::link_patterns(std::vector<Pattern> patterns,
-    const std::vector<Character>& characters)
-{
-    std::map<std::string, Pattern&> map_patterns;
-    for (auto& pattern : patterns)
-    {
-        map_patterns.insert({ pattern.get_name(), pattern });
-    }
-    for (const auto& character : characters)
-    {
-        for (const auto& pt : character.get_patterns())
-        {
-            map_patterns.find(pt.first)->second.add_character(
-                character, std::distance(character.get_patterns().data(), &pt));
-        }
-    }
-    return patterns;
 }

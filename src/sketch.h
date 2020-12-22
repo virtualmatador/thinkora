@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <vector>
 
-#include "pattern.h"
+#include "convex.h"
 #include "shape.h"
 
 class Sketch: public Shape

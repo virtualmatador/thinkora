@@ -11,7 +11,6 @@
 
 #include "character.h"
 #include "guess.h"
-#include "pattern.h"
 #include "shape.h"
 #include "sketch.h"
 
@@ -29,15 +28,10 @@ public:
 private:
     void run();
     std::list<std::shared_ptr<Guess>> extend(const Sketch* sketch,
-        const std::list<std::pair<const Pattern&, double>>& patterns);
-    template<class T>
-    static std::vector<T> read_json(const std::string& folder);
-    static std::vector<Pattern> link_patterns(std::vector<Pattern> patterns,
-        const std::vector<Character>& characters);
+        const std::vector<Convex>& convexes);
 
 private:
-    const std::vector<Character> characters_;
-    const std::vector<Pattern> patterns_;
+    std::vector<Character> characters_;
     std::thread thread_;
     std::atomic<bool> run_;
     std::condition_variable jobs_condition_;

@@ -16,13 +16,14 @@ Guess::~Guess()
 }
 
 std::list<std::shared_ptr<Guess>> Guess::extend(const Sketch* sketch,
-    const std::list<std::pair<const Pattern&, double>>& patterns)
+    const std::vector<Convex>& convexes)
 {
     std::list<std::shared_ptr<Guess>> guesses;
     done_ = parent_.get();
-    for(auto[pattern, diff] : patterns)
+    for (auto& convex : convexes)
     {
-        for (auto& [character, index] : pattern.get_characters())
+        /*
+        for (auto& character : characters)
         {
             if (index == index_ + 1)
             {
@@ -48,6 +49,7 @@ std::list<std::shared_ptr<Guess>> Guess::extend(const Sketch* sketch,
                 }
             }
         }
+        */
     }
     if (guesses.empty())
     {

@@ -7,6 +7,7 @@
 #include "toolbox.h"
 
 #include "character.h"
+#include "convex.h"
 #include "sketch.h"
 
 class Guess : public std::enable_shared_from_this<Guess>
@@ -16,7 +17,7 @@ public:
         const Character* character, std::size_t index, double diff);
     ~Guess();
     std::list<std::shared_ptr<Guess>> extend(const Sketch* sketch,
-        const std::list<std::pair<const Pattern&, double>>& patterns);
+        const std::vector<Convex>& convexes);
     bool is_done();
     std::shared_ptr<Guess> get_parent() const;
     const Rectangle& get_frame() const;
