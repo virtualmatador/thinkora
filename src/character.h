@@ -7,6 +7,7 @@
 
 #include <json.h>
 
+#include "convex.h"
 #include "toolbox.h"
 
 class Character
@@ -14,14 +15,12 @@ class Character
 public:
     Character(const std::string& name, const jsonio::json& character);
     ~Character();
-    std::size_t get_size() const;
-    const std::vector<std::pair<std::string, Rectangle>>& get_patterns() const;
-    const std::string& get_character() const;
+    const std::string& get_name() const;
+    const std::vector<std::pair<Convex, Rectangle>>& get_segments() const;
 
 private:
     std::string name_;
-    std::vector<std::pair<std::string, Rectangle>> patterns_;
-    std::string character_;
+    std::vector<std::pair<Convex, Rectangle>> segments_;
 };
     
 #endif // THINKORA_SRC_CHARACTER_H

@@ -13,33 +13,36 @@
 class Guess : public std::enable_shared_from_this<Guess>
 {
 public:
-    Guess(std::shared_ptr<Guess> parent, const Sketch* sketch,
-        const Character* character, std::size_t index, double diff);
+    Guess(std::shared_ptr<const Guess> parent, const Character* character,
+        const Sketch* sketch, std::vector<std::size_t>&& deficients,
+        double value);
     ~Guess();
     std::list<std::shared_ptr<Guess>> extend(const Sketch* sketch,
-        const std::vector<Convex>& convexes);
+        const Convex& convex) const;
     bool is_done();
-    std::shared_ptr<Guess> get_parent() const;
-    const Rectangle& get_frame() const;
-    double get_diff() const;
+    std::shared_ptr<const Guess> get_parent() const;
+    double get_value() const;
     bool is_complete() const;
     const std::string& get_character() const;
+
+private:
+    std::list<std::shared_ptr<Guess>> extend(
+        const Character* character, const std::vector<std::size_t>& deficients,
+        const Sketch* sketch, const Convex& convex) const;
 
 public:
     static std::shared_ptr<Guess> head();
 
 private:
-    std::shared_ptr<Guess> parent_;
-    const Sketch* sketch_;
+    std::shared_ptr<const Guess> parent_;
     const Character* character_;
-    std::size_t index_;
-    int top_min_;
-    int top_max_;
-    int bottom_min_;
-    int bottom_max_;
-    std::list<const Sketch*> unmatchs_;
-    double diff_;
-    bool done_;
+    std::vector<std::size_t> deficients_;
+    const Sketch* extra_;
+    Point tl_min_;
+    Point tl_max_;
+    Point br_min_;
+    Point br_max_;
+    double value_;
 };
 
 #endif // THINKORA_SRC_GUESS_H

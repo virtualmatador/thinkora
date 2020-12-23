@@ -20,6 +20,8 @@
 
 #include "ocr.h"
 
+std::vector<Character> Ocr::characters_;
+
 Ocr::Ocr(Board& board)
     : run_{ true }
     , zoom_{ 0 }
@@ -28,17 +30,6 @@ Ocr::Ocr(Board& board)
     , style_{ Shape::Style::SIZE }
     , board_{ board }
 {
-    auto path = std::filesystem::path("../language/characters");
-    for (auto& json_file: std::filesystem::directory_iterator(path))
-    {
-        std::fstream json_reader(json_file.path());
-        jsonio::json json_data;
-        json_reader >> json_data;
-        if (json_data.completed())
-        {
-            characters_.emplace_back(json_file.path().stem(), json_data);
-        }
-    }
     guesses_.emplace_back(Guess::head());
     thread_ = std::thread([this]()
     {
@@ -130,23 +121,30 @@ void Ocr::run()
         else
         {
             auto convexes = Convex::get_convexes(points);
-            auto guesses = extend(sketch, convexes);
-            bool all_done = true;
-            for (auto guess : guesses_)
+            for (const auto convex : convexes)
             {
-                if (!guess->is_done())
+                auto guesses = extend(sketch, convex);
+                if (check_apply(guesses))
                 {
-                    all_done = false;
-                    break;
+                    guesses.clear();
+                    apply();
+                    guesses = extend(sketch, convex);
+                    if (check_apply(guesses))
+                    {
+                        std::swap(guesses_, guesses);
+                        guesses.clear();
+                        apply();
+                    }
+                    else
+                    {
+                        std::swap(guesses_, guesses);
+                    }
+                }
+                else
+                {
+                    std::swap(guesses_, guesses);
                 }
             }
-            if (all_done)
-            {
-                guesses.clear();
-                apply();
-                guesses = extend(sketch, convexes);
-            }
-            std::swap(guesses_, guesses);
         }
     }
     else
@@ -155,34 +153,38 @@ void Ocr::run()
     }
 }
 
+bool Ocr::check_apply(const std::list<std::shared_ptr<Guess>>& guesses)
+{
+    for (auto guess : guesses)
+    {
+        if (!guess->is_done())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 std::list<std::shared_ptr<Guess>> Ocr::extend(const Sketch* sketch,
-    const std::vector<Convex>& convexes)
+    const Convex& convex)
 {
     decltype(guesses_) guesses;
     for (auto guess : guesses_)
     {
-        auto child_guesses = guess->extend(sketch, convexes);
-        if (!child_guesses.empty())
-        {
-            guesses.merge(std::move(child_guesses));
-        }
-        else
-        {
-            guesses.emplace_back(guess);
-        }                
+        guesses.merge(guess->extend(sketch, convex));
     }
     return guesses;
 }
 
 void Ocr::apply()
 {
-    double best_diff = std::numeric_limits<double>::max();
-    std::shared_ptr<Guess> best_guess;
+    double best_value = std::numeric_limits<double>::min();
+    std::shared_ptr<const Guess> best_guess;
     for (const auto& guess : guesses_)
     {
-        if (best_diff > guess->get_diff())
+        if (best_value < guess->get_value())
         {
-            best_diff = guess->get_diff();
+            best_value = guess->get_value();
             best_guess = guess;
         }
     }
@@ -197,8 +199,7 @@ void Ocr::apply()
         {
             // TODO check for shapes
             text += best_guess->get_character();
-            extend_frame(frame, best_guess->get_frame()[0]);
-            extend_frame(frame, best_guess->get_frame()[1]);
+            // TODO extend frame based on guess location
         }
         best_guess = best_guess->get_parent();
     }
@@ -215,4 +216,19 @@ void Ocr::apply()
     guesses_.clear();
     guesses_.emplace_back(Guess::head());
     board_.apply_ocr(sources, zoom_, results);
+}
+
+void Ocr::read_characters()
+{
+    auto path = std::filesystem::path("../language/characters");
+    for (auto& json_file: std::filesystem::directory_iterator(path))
+    {
+        std::fstream json_reader(json_file.path());
+        jsonio::json json_data;
+        json_reader >> json_data;
+        if (json_data.completed())
+        {
+            characters_.emplace_back(json_file.path().stem(), json_data);
+        }
+    }
 }

@@ -41,6 +41,7 @@ Board::Board(Bar& bar)
         }));
     }
     queue_draw_.connect(sigc::mem_fun(*this, &Widget::queue_draw));
+    Ocr::read_characters();
 }
 
 Board::~Board()

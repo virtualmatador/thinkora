@@ -3,18 +3,17 @@
 Character::Character(const std::string& name, const jsonio::json& character)
     : name_{ name }
 {
-    character_ = character["character"].get_string();
-    for (const auto& pattern : character["patterns"].get_array())
-    {
-        patterns_.push_back({
-            pattern["name"].get_string(),
-            {
-                pattern["left"].get_double(),
-                pattern["top"].get_double(),
-                pattern["right"].get_double(),
-                pattern["bottom"].get_double(),
-            }
-        });
+    for (const auto& segment : character.get_array())
+   {
+        Convex convex{ segment["convex"] };
+        Rectangle frame
+        {
+            segment["frame"]["left"].get_double(),
+            segment["frame"]["top"].get_double(),
+            segment["frame"]["right"].get_double(),
+            segment["frame"]["bottom"].get_double(),
+        };
+        segments_.emplace_back(convex, frame);
     }
 }
 
@@ -22,19 +21,14 @@ Character::~Character()
 {
 }
 
-std::size_t Character::get_size() const
+const std::string& Character::get_name() const
 {
-    return patterns_.size();
+    return name_;
 }
 
-const std::vector<std::pair<std::string, Rectangle>>& Character::get_patterns() const
+const std::vector<std::pair<Convex, Rectangle>>& Character::get_segments() const
 {
-    return patterns_;
-}
-
-const std::string& Character::get_character() const
-{
-    return character_;
+    return segments_;
 }
 
 /*
