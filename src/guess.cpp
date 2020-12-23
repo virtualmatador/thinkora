@@ -5,12 +5,12 @@
 #include "guess.h"
 
 Guess::Guess(std::shared_ptr<const Guess> parent, const Character* character,
-    const Sketch* sketch, std::list<std::size_t>&& deficients, double value)
+    const Sketch* sketch, std::list<std::size_t>&& deficients, double diff)
     : parent_{ parent }
     , character_{ character }
     , extra_{ sketch }
     , deficients_ { std::move(deficients) }
-    , value_{ value }
+    , diff_{ diff }
 {
 }
 
@@ -34,14 +34,14 @@ std::list<std::shared_ptr<const Guess>> Guess::extend(const Sketch* sketch,
         {
             guesses.emplace_back(std::make_shared<Guess>(shared_from_this(),
                 character_, sketch, std::list<std::size_t>(deficients_),
-                value_ - 1.0));
+                diff_ + 1.0));
         }   
     }
     else
     {
         for (auto& character : Ocr::characters_)
         {
-            std::list<std::size_t> deficients(character.get_segments().size());
+            std::list<std::size_t> deficients(character.get_convexes().size());
             std::iota(deficients.begin(), deficients.end(), std::size_t(0));
             auto child_guess = extend(
                 &character, std::move(deficients), sketch, convexes);
@@ -54,7 +54,7 @@ std::list<std::shared_ptr<const Guess>> Guess::extend(const Sketch* sketch,
         {
             guesses.emplace_back(
                 std::make_shared<Guess>(shared_from_this(), nullptr, sketch,
-                std::list<std::size_t>(), value_ - 1.0));
+                std::list<std::size_t>(), diff_ + 1.0));
         }
     }
     return guesses;
@@ -64,7 +64,7 @@ std::shared_ptr<const Guess> Guess::extend(
     const Character* character, std::list<std::size_t>&& deficients,
     const Sketch* sketch, const std::vector<Convex>& convexes) const
 {
-    double similarities = 0.0;
+    double diffs = 0.0;
     for (const auto& convex : convexes)
     {
         Convex inverted_convex = convex;
@@ -74,16 +74,16 @@ std::shared_ptr<const Guess> Guess::extend(
         {
             // TODO check if sizes are close &&
             // TODO check position is on cursor, apply to diff or discard
-            auto similarity = character->get_segments()
-                [*it].first.compare(convex);
-            if (similarity < 0.6)
+            auto diff = character->get_convexes()
+                [*it].compare(convex);
+            if (diff > 0.4)
             {
-                similarity = character->get_segments()
-                    [*it].first.compare(inverted_convex);
+                diff = character->get_convexes()
+                    [*it].compare(inverted_convex);
             }
-            if (similarity >= 0.6)
+            if (diff <= 0.4)
             {
-                similarities += similarity;
+                diffs += diff;
                 it = deficients.erase(it);
                 found = true;
                 break;
@@ -95,16 +95,26 @@ std::shared_ptr<const Guess> Guess::extend(
         }
         if (!found)
         {
-            return nullptr;
+            auto fault =
+                get_distance(convex.get_frame()[0], convex.get_frame()[1]) /
+                get_distance(sketch->get_frame()[0], sketch->get_frame()[1]);
+            if (fault < 0.2)
+            {
+                diffs += fault;
+            }
+            else
+            {
+                return nullptr;
+            }
         }
     }
     return std::make_shared<Guess>(shared_from_this(), character, nullptr,
-        std::move(deficients), value_ + similarities / convexes.size());
+        std::move(deficients), diff_ + diffs / convexes.size());
 }
 
 bool Guess::is_done() const
 {
-    return extra_ && parent_.get();
+    return extra_;
 }
 
 std::shared_ptr<const Guess> Guess::get_parent() const
@@ -112,9 +122,9 @@ std::shared_ptr<const Guess> Guess::get_parent() const
     return parent_;
 }
 
-double Guess::get_value() const
+double Guess::get_diff() const
 {
-    return value_;
+    return diff_;
 }
 
 bool Guess::is_complete() const

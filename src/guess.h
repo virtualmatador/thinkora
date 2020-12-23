@@ -16,13 +16,13 @@ class Guess : public std::enable_shared_from_this<Guess>
 public:
     Guess(std::shared_ptr<const Guess> parent, const Character* character,
         const Sketch* sketch, std::list<std::size_t>&& deficients,
-        double value);
+        double diff);
     ~Guess();
     std::list<std::shared_ptr<const Guess>> extend(const Sketch* sketch,
         const std::vector<Convex>& convexes) const;
     bool is_done() const;
     std::shared_ptr<const Guess> get_parent() const;
-    double get_value() const;
+    double get_diff() const;
     bool is_complete() const;
     const std::string& get_character() const;
 
@@ -43,7 +43,7 @@ private:
     Point tl_max_;
     Point br_min_;
     Point br_max_;
-    double value_;
+    double diff_;
 };
 
 #endif // THINKORA_SRC_GUESS_H

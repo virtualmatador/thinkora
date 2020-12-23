@@ -45,6 +45,7 @@ private:
     std::list<const Sketch*> jobs_;
     std::mutex working_lock_;
     std::list<std::shared_ptr<const Guess>> guesses_;
+    std::shared_ptr<const Guess> head_;
     int zoom_;
     double width_;
     Gdk::RGBA color_;

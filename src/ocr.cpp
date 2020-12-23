@@ -24,6 +24,7 @@ std::vector<Character> Ocr::characters_;
 
 Ocr::Ocr(Board& board)
     : run_{ true }
+    , head_ { Guess::head() }
     , zoom_{ 0 }
     , width_{ 0.0 }
     , color_{ Gdk::RGBA("#000000") }
@@ -106,11 +107,9 @@ void Ocr::run()
         width_ = sketch->get_width();
         color_ = sketch->get_color();
         style_ = sketch->get_style();
-
-
         std::list<Shape*> results;
         std::list<const Sketch*> sources;
-        sources.emplace_back(sketch);
+        //sources.emplace_back(sketch);
         auto points = sketch->simplify();
         // TODO check for edge
         if (false)
@@ -121,8 +120,27 @@ void Ocr::run()
         else
         {
             auto convexes = Convex::get_convexes(points);
+
+            // std::list<Shape*> results;
+            // for (const auto& convex : convexes)
+            // {
+            //     auto d = get_distance(convex.get_frame()[0], convex.get_frame()[1]);
+            //     {
+            //         auto ln = new Wire(4.0, Gdk::RGBA("#FF0000"), Shape::Style::DASH_DOT);
+            //         ln->set_wire(
+            //         {
+            //             convex.get_frame()[0][0] + convex.b_x_ * d,
+            //             convex.get_frame()[0][1] + convex.b_y_ * d,
+            //             convex.get_frame()[0][0] + convex.e_x_ * d,
+            //             convex.get_frame()[0][1] + convex.e_y_ * d,
+            //         });
+            //         results.push_back(ln);
+            //     }
+            // }
+            // board_.apply_ocr(sources, zoom_, results);
+
             auto guesses = extend(sketch, convexes);
-            if (check_apply(guesses))
+            if (!guesses_.empty() && check_apply(guesses))
             {
                 guesses.clear();
                 apply();
@@ -166,22 +184,29 @@ std::list<std::shared_ptr<const Guess>> Ocr::extend(const Sketch* sketch,
     const std::vector<Convex>& convexes)
 {
     decltype(guesses_) guesses;
-    for (auto guess : guesses_)
+    if (guesses_.empty())
     {
-        guesses.merge(guess->extend(sketch, convexes));
+        guesses.merge(head_->extend(sketch, convexes));
+    }
+    else
+    {
+        for (auto guess : guesses_)
+        {
+            guesses.merge(guess->extend(sketch, convexes));
+        }
     }
     return guesses;
 }
 
 void Ocr::apply()
 {
-    double best_value = -std::numeric_limits<double>::max();
+    double best_value = std::numeric_limits<double>::max();
     std::shared_ptr<const Guess> best_guess;
     for (const auto& guess : guesses_)
     {
-        if (best_value < guess->get_value())
+        if (best_value > guess->get_diff())
         {
-            best_value = guess->get_value();
+            best_value = guess->get_diff();
             best_guess = guess;
         }
     }
@@ -189,7 +214,7 @@ void Ocr::apply()
     std::list<const Sketch*> sources;
     std::string text;
     Rectangle frame = empty_frame();
-    while (best_guess->get_parent())
+    while (best_guess)
     {
         // TODO post process (symetry, size, position) and draw unmatch sketches
         if (best_guess->is_complete())
@@ -211,7 +236,6 @@ void Ocr::apply()
         results.emplace_back(txt);
     }
     guesses_.clear();
-    guesses_.emplace_back(Guess::head());
     board_.apply_ocr(sources, zoom_, results);
 }
 
