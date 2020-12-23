@@ -30,9 +30,9 @@ public:
 
 private:
     void run();
-    bool check_apply(const std::list<std::shared_ptr<Guess>>& guesses);
-    std::list<std::shared_ptr<Guess>> extend(const Sketch* sketch,
-        const Convex& convex);
+    bool check_apply(const std::list<std::shared_ptr<const Guess>>& guesses);
+    std::list<std::shared_ptr<const Guess>> extend(const Sketch* sketch,
+        const std::vector<Convex>& convexes);
 
 public:
     static std::vector<Character> characters_;
@@ -44,7 +44,7 @@ private:
     std::mutex jobs_lock_;
     std::list<const Sketch*> jobs_;
     std::mutex working_lock_;
-    std::list<std::shared_ptr<Guess>> guesses_;
+    std::list<std::shared_ptr<const Guess>> guesses_;
     int zoom_;
     double width_;
     Gdk::RGBA color_;

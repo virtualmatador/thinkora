@@ -12,8 +12,7 @@ class Convex
 {
 public:
     Convex(const jsonio::json& json);
-    Convex(const std::vector<Point>& points, const double& d_r,
-        const Rectangle& frame);
+    Convex(const std::vector<Point>& points);
     ~Convex();
     void invert();
     double compare(const Convex& convex) const;

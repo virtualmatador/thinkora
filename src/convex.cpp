@@ -47,8 +47,7 @@ Convex::Convex(const jsonio::json& json)
     n_e_ = json["n_e"].get_long();
 }
 
-Convex::Convex(const std::vector<Point>& points, const double& d_r,
-    const Rectangle& frame)
+Convex::Convex(const std::vector<Point>& points)
 {
     if (points.size() == 1)
     {
@@ -59,6 +58,18 @@ Convex::Convex(const std::vector<Point>& points, const double& d_r,
     }
     else
     {
+        d_r_ = 0.0;
+        Rectangle frame = empty_frame();
+        extend_frame(frame, points.front());
+        for (auto it = points.begin() + 1; it != points.end(); ++ it)
+        {
+            d_r_ += get_angle(
+            {
+                (*it)[0] - (*(it - 1))[0],
+                (*it)[1] - (*(it - 1))[1],
+            });
+            extend_frame(frame, *it);
+        }
         auto diameter = get_distance(frame[0], frame[1]);
         b_a_b_ = true;
         b_a_ = get_angle(
@@ -83,7 +94,6 @@ Convex::Convex(const std::vector<Point>& points, const double& d_r,
             points[points.size() - 1][1] - points[0][1]
         });
         d_l_ = get_distance(points[points.size() - 1], points[0]) / diameter;
-        d_r_ = d_r;
         n_b_ = n_e_ = points.size();
     }
 }
@@ -151,7 +161,6 @@ std::vector<Convex> Convex::get_convexes(const std::vector<Point>& points)
 {
     std::vector<Convex> convexes;
     double last_angle;
-    double rotation = 0.0;
     std::vector<Point> convex_points{ points[0] };
     bool mid_start = false;
     Point mid_point;
@@ -161,20 +170,18 @@ std::vector<Convex> Convex::get_convexes(const std::vector<Point>& points)
         double new_angle;
         if (end != points.size())
         {
-            new_angle = get_angle(
-            {
-                points[end][0] - points[end - 1][0],
-                points[end][1] - points[end - 1][1],
-            });
             if (convex_points.size() > 1)
             {
-                if (abs(get_rotation(new_angle, last_angle)) >
+                new_angle = get_angle(
+                    points[end], points[end - 1], points[end - 2]);
+                if (abs(new_angle) >
                     std::numbers::pi / 3.0)
                 {
                     cut = true;
                     end -= 1;
                 }
-                else if (new_angle * last_angle < 0.0)
+                else if (convex_points.size() > 2 &&
+                    new_angle * last_angle < 0.0)
                 {
                     mid_point =
                     {
@@ -194,13 +201,7 @@ std::vector<Convex> Convex::get_convexes(const std::vector<Point>& points)
         }
         if (cut)
         {
-            Rectangle convex_frame = empty_frame();
-            for (const auto& point : convex_points)
-            {
-                extend_frame(convex_frame, point);
-            }
-            convexes.emplace_back(convex_points, rotation, convex_frame);
-            rotation = 0.0;
+            convexes.emplace_back(convex_points);
             if (end != points.size())
             {
                 if (!mid_start)
@@ -213,11 +214,14 @@ std::vector<Convex> Convex::get_convexes(const std::vector<Point>& points)
                     convex_points = { mid_point };
                 }
             }
+            else
+            {
+                break;
+            }            
         }
         else
         {
             last_angle = new_angle;
-            rotation += last_angle;
             convex_points.push_back(points[end]);
         }
     }

@@ -121,29 +121,26 @@ void Ocr::run()
         else
         {
             auto convexes = Convex::get_convexes(points);
-            for (const auto convex : convexes)
+            auto guesses = extend(sketch, convexes);
+            if (check_apply(guesses))
             {
-                auto guesses = extend(sketch, convex);
+                guesses.clear();
+                apply();
+                guesses = extend(sketch, convexes);
                 if (check_apply(guesses))
                 {
+                    std::swap(guesses_, guesses);
                     guesses.clear();
                     apply();
-                    guesses = extend(sketch, convex);
-                    if (check_apply(guesses))
-                    {
-                        std::swap(guesses_, guesses);
-                        guesses.clear();
-                        apply();
-                    }
-                    else
-                    {
-                        std::swap(guesses_, guesses);
-                    }
                 }
                 else
                 {
                     std::swap(guesses_, guesses);
                 }
+            }
+            else
+            {
+                std::swap(guesses_, guesses);
             }
         }
     }
@@ -153,7 +150,7 @@ void Ocr::run()
     }
 }
 
-bool Ocr::check_apply(const std::list<std::shared_ptr<Guess>>& guesses)
+bool Ocr::check_apply(const std::list<std::shared_ptr<const Guess>>& guesses)
 {
     for (auto guess : guesses)
     {
@@ -165,20 +162,20 @@ bool Ocr::check_apply(const std::list<std::shared_ptr<Guess>>& guesses)
     return true;
 }
 
-std::list<std::shared_ptr<Guess>> Ocr::extend(const Sketch* sketch,
-    const Convex& convex)
+std::list<std::shared_ptr<const Guess>> Ocr::extend(const Sketch* sketch,
+    const std::vector<Convex>& convexes)
 {
     decltype(guesses_) guesses;
     for (auto guess : guesses_)
     {
-        guesses.merge(guess->extend(sketch, convex));
+        guesses.merge(guess->extend(sketch, convexes));
     }
     return guesses;
 }
 
 void Ocr::apply()
 {
-    double best_value = std::numeric_limits<double>::min();
+    double best_value = -std::numeric_limits<double>::max();
     std::shared_ptr<const Guess> best_guess;
     for (const auto& guess : guesses_)
     {
@@ -220,7 +217,7 @@ void Ocr::apply()
 
 void Ocr::read_characters()
 {
-    auto path = std::filesystem::path("../language/characters");
+    auto path = std::filesystem::path("../characters");
     for (auto& json_file: std::filesystem::directory_iterator(path))
     {
         std::fstream json_reader(json_file.path());
@@ -228,7 +225,13 @@ void Ocr::read_characters()
         json_reader >> json_data;
         if (json_data.completed())
         {
-            characters_.emplace_back(json_file.path().stem(), json_data);
+            std::string name = json_file.path().stem();
+            auto size = name.rfind('-');
+            if (size != std::string::npos)
+            {
+                name.resize(size);
+                characters_.emplace_back(json_file.path().stem(), json_data);
+            }
         }
     }
 }
