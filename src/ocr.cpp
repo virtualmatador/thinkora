@@ -122,11 +122,12 @@ void Ocr::run()
             auto convexes = Convex::get_convexes(points);
 
             // std::list<Shape*> results;
-            // for (const auto& convex : convexes)
+            // std::array<Gdk::RGBA, 2> colors { Gdk::RGBA("#FF0000"), Gdk::RGBA("#00FF00") };
+            // for (auto& convex : convexes)
             // {
             //     auto d = get_distance(convex.get_frame()[0], convex.get_frame()[1]);
             //     {
-            //         auto ln = new Wire(4.0, Gdk::RGBA("#FF0000"), Shape::Style::DASH_DOT);
+            //         auto ln = new Wire(4.0, colors[std::distance(convexes.data(), &convex) % 2], Shape::Style::DASH_DOT);
             //         ln->set_wire(
             //         {
             //             convex.get_frame()[0][0] + convex.b_x_ * d,
@@ -227,7 +228,7 @@ void Ocr::apply()
     }
     if (!text.empty())
     {
-        text.reserve();
+        std::reverse(text.begin(), text.end());
         // TODO Check for matching text (width color style and size) in neighborhood, line or paragraph, then combine them
         // TODO Check for shapes around to link their name
         // TODO Adjust top and bottom
@@ -254,7 +255,7 @@ void Ocr::read_characters()
             if (size != std::string::npos)
             {
                 name.resize(size);
-                characters_.emplace_back(json_file.path().stem(), json_data);
+                characters_.emplace_back(name, json_data);
             }
         }
     }

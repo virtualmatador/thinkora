@@ -32,7 +32,7 @@ const int& Sketch::get_zoom() const
 std::vector<Point> Sketch::simplify() const
 {
     std::vector<Point> points;
-    double tolerance = std::pow(get_distance(frame_[0], frame_[1]), 0.75) / 16.0;
+    double tolerance = get_distance(frame_[0], frame_[1]) / 8.0;
     double angle_max = 3.0;
     for (auto it = points_.begin();;)
     {
@@ -43,7 +43,8 @@ std::vector<Point> Sketch::simplify() const
                 *points.rbegin(),
                 *(points.rbegin() + 1),
                 *(points.rbegin() + 2));
-            if (std::abs(old_angle) > angle_max)
+            if (std::abs(old_angle) > angle_max || get_distance(
+                *(points.rbegin() + 1), *(points.rbegin() + 2)) < tolerance)
             {
                 *(points.rbegin() + 1) = *(points.rbegin());
                 points.pop_back();
@@ -52,6 +53,12 @@ std::vector<Point> Sketch::simplify() const
         }
         if (it == points_.end())
         {
+            if (get_distance(*points.rbegin(), *(points.rbegin() + 1)) <
+                tolerance)
+            {
+                *(points.rbegin() + 1) = *(points.rbegin());
+                points.pop_back();
+            }
             break;
         }
         if (points.size() < 3)

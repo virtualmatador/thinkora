@@ -20,7 +20,7 @@ Convex::Convex(const jsonio::json& json)
     if (value)
     {
         b_a_b_ = true;
-        b_a_ = convex["b_a"].get_double() * 2.0 * std::numbers::pi / 180.0;
+        b_a_ = convex["b_a"].get_double() * std::numbers::pi / 180.0;
         b_x_ = convex["b_x"].get_double();
         b_y_ = convex["b_y"].get_double();
     }
@@ -32,7 +32,7 @@ Convex::Convex(const jsonio::json& json)
     if (value)
     {
         e_a_b_ = true;
-        e_a_ = convex["e_a"].get_double() * 2.0 * std::numbers::pi / 180.0;
+        e_a_ = convex["e_a"].get_double() * std::numbers::pi / 180.0;
         e_x_ = convex["e_x"].get_double();
         e_y_ = convex["e_y"].get_double();
     }
@@ -44,14 +44,14 @@ Convex::Convex(const jsonio::json& json)
     if (value)
     {
         d_a_b_ = true;
-        d_a_ = convex["d_a"].get_double() * 2.0 * std::numbers::pi / 180.0;
+        d_a_ = convex["d_a"].get_double() * std::numbers::pi / 180.0;
     }
     else
     {
         d_a_b_ = false;
     }
     d_l_ = convex["d_l"].get_double();
-    d_r_ = convex["d_r"].get_double() * 2.0 * std::numbers::pi / 180.0;
+    d_r_ = convex["d_r"].get_double() * std::numbers::pi / 180.0;
     n_b_ = convex["n_b"].get_long();
     n_e_ = convex["n_e"].get_long();
 }
