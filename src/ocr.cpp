@@ -24,6 +24,7 @@ std::vector<Character> Ocr::characters_;
 
 Ocr::Ocr(Board& board)
     : run_{ true }
+    , force_apply_{ false }
     , head_ { Guess::head() }
     , zoom_{ 0 }
     , width_{ 0.0 }
@@ -42,15 +43,16 @@ Ocr::Ocr(Board& board)
             jobs_condition_.wait_for(jobs_wait_lock, std::chrono::seconds(2),
                 [this, &last_run]()
             {
-                return !run_ || !jobs_.empty() ||
+                return !run_ || !jobs_.empty() || force_apply_ ||
                     std::chrono::steady_clock::now() - last_run > std::chrono::seconds(2);
             });
             if (run_)
             {
-                working_lock_.lock();
+                force_apply_ = false;
+                work_lock_.lock();
                 jobs_wait_lock.unlock();
                 run();
-                working_lock_.unlock();
+                work_lock_.unlock();
             }
         }
     });
@@ -71,13 +73,19 @@ void Ocr::add(const Sketch* sketch)
     jobs_condition_.notify_one();
 }
 
-void Ocr::cancel()
+void Ocr::finish()
 {
-    jobs_lock_.lock();
-    working_lock_.lock();
-    jobs_.clear();
-    working_lock_.unlock();
-    jobs_lock_.unlock();
+    for (;;)
+    {
+        std::lock_guard<std::mutex> jobs_guard{ jobs_lock_ };
+        std::lock_guard<std::mutex> work_guard{ work_lock_ };
+        if (jobs_.empty() && guesses_.empty())
+        {
+            break;
+        }
+        force_apply_ = true;
+        jobs_condition_.notify_one();
+    }
 }
 
 void Ocr::run()
@@ -107,9 +115,6 @@ void Ocr::run()
         width_ = sketch->get_width();
         color_ = sketch->get_color();
         style_ = sketch->get_style();
-        std::list<Shape*> results;
-        std::list<const Sketch*> sources;
-        //sources.emplace_back(sketch);
         auto points = sketch->simplify();
         // TODO check for edge
         if (false)
@@ -121,6 +126,8 @@ void Ocr::run()
         {
             auto convexes = Convex::get_convexes(points);
 
+            // std::list<Shape*> results;
+            // std::list<const Sketch*> sources;
             // std::list<Shape*> results;
             // std::array<Gdk::RGBA, 2> colors { Gdk::RGBA("#FF0000"), Gdk::RGBA("#00FF00") };
             // for (auto& convex : convexes)
@@ -233,11 +240,15 @@ void Ocr::apply()
         // TODO Check for shapes around to link their name
         // TODO Adjust top and bottom
         Text* txt = new Text(width_, color_, style_);
+        frame = {0, 0, 200, 100};
         txt->set_text(text, frame);
         results.emplace_back(txt);
     }
     guesses_.clear();
-    board_.apply_ocr(sources, zoom_, results);
+    if (!sources.empty() || !results.empty())
+    {
+        board_.apply_ocr(sources, zoom_, results);
+    }
 }
 
 void Ocr::read_characters()

@@ -46,6 +46,7 @@ private:
     bool check_zoom(const int& zoom, const Point& center) const;
     std::string choose_file(Gtk::FileChooserAction action) const;
     Point get_input_position(const Point& point) const;
+    void finish_ocr();
 
 private:
     int zoom_;

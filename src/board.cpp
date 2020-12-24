@@ -46,6 +46,7 @@ Board::Board(Bar& bar)
 
 Board::~Board()
 {
+    finish_ocr();
     clear_data();
 }
 
@@ -93,7 +94,6 @@ void Board::apply_ocr(const std::list<const Sketch*>& sources, int zoom,
 
 void Board::clear_data()
 {
-    ocr_.cancel();
     shapes_lock_.lock();
     for (auto& [zoom, plane]: shapes_)
     {
@@ -353,6 +353,7 @@ bool Board::on_enter_notify_event(GdkEventCrossing* crossing_event)
 
 void Board::on_save()
 {
+    finish_ocr();
     auto file_name =
         choose_file(Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SAVE);
     if (!file_name.empty())
@@ -394,6 +395,7 @@ void Board::on_save()
 
 void Board::on_open()
 {
+    finish_ocr();
     if (check_modified())
     {
         return;
@@ -500,4 +502,11 @@ Point Board::get_input_position(const Point& point) const
         point[0] - allocation.get_width() / 2.0 + center_[0],
         point[1] - allocation.get_height() / 2.0 + center_[1]
     };
+}
+
+void Board::finish_ocr()
+{
+    get_window()->set_cursor(Gdk::Cursor::create(Gdk::CursorType::WATCH));
+    ocr_.finish();
+    get_window()->set_cursor();
 }

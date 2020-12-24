@@ -25,7 +25,7 @@ public:
     Ocr(Board& board);
     ~Ocr();
     void add(const Sketch* sketch);
-    void cancel();
+    void finish();
     void apply();
 
 private:
@@ -40,10 +40,11 @@ public:
 private:
     std::thread thread_;
     std::atomic<bool> run_;
+    std::atomic<bool> force_apply_;
     std::condition_variable jobs_condition_;
     std::mutex jobs_lock_;
     std::list<const Sketch*> jobs_;
-    std::mutex working_lock_;
+    std::mutex work_lock_;
     std::list<std::shared_ptr<const Guess>> guesses_;
     std::shared_ptr<const Guess> head_;
     int zoom_;
