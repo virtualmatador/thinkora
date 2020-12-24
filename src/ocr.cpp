@@ -35,16 +35,30 @@ Ocr::Ocr(Board& board)
     guesses_.emplace_back(Guess::head());
     thread_ = std::thread([this]()
     {
+        auto delay = std::chrono::seconds(2);
         while (run_)
         {
             std::chrono::steady_clock::time_point last_run{
                 std::chrono::steady_clock::now() };
             std::unique_lock<std::mutex> jobs_wait_lock{ jobs_lock_ };
-            jobs_condition_.wait_for(jobs_wait_lock, std::chrono::seconds(2),
-                [this, &last_run]()
+            jobs_condition_.wait_for(jobs_wait_lock, delay -
+                (std::chrono::steady_clock::now() - last_run),
+                [this, &last_run, &delay]()
             {
-                return !run_ || !jobs_.empty() || force_apply_ ||
-                    std::chrono::steady_clock::now() - last_run > std::chrono::seconds(2);
+                if (!run_)
+                {
+                    return true;
+                }
+                if (!jobs_.empty() || force_apply_)
+                {
+                    return true;
+                }
+                if (!board_.is_drawing() &&
+                    std::chrono::steady_clock::now() - last_run > delay)
+                {
+                    return true;
+                }
+                return false;
             });
             if (run_)
             {
@@ -126,7 +140,6 @@ void Ocr::run()
         {
             auto convexes = Convex::get_convexes(points);
 
-            // std::list<Shape*> results;
             // std::list<const Sketch*> sources;
             // std::list<Shape*> results;
             // std::array<Gdk::RGBA, 2> colors { Gdk::RGBA("#FF0000"), Gdk::RGBA("#00FF00") };
@@ -170,7 +183,7 @@ void Ocr::run()
             }
         }
     }
-    else
+    else if (!guesses_.empty())
     {
         apply();
     }
@@ -245,10 +258,7 @@ void Ocr::apply()
         results.emplace_back(txt);
     }
     guesses_.clear();
-    if (!sources.empty() || !results.empty())
-    {
-        board_.apply_ocr(sources, zoom_, results);
-    }
+    board_.apply_ocr(sources, zoom_, results);
 }
 
 void Ocr::read_characters()

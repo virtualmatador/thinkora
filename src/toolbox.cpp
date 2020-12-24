@@ -78,13 +78,13 @@ double get_angle(const Point& vector)
 double get_rotation(const double& first_angle, const double& second_angle)
 {
     double r = second_angle - first_angle;
-    if (r < -180.0)
+    if (r < -std::numbers::pi)
     {
-        r += 360.0;
+        r += 2.0 * std::numbers::pi;
     }
-    else if (r > 180.0)
+    else if (r > std::numbers::pi)
     {
-        r -= 360.0;
+        r -= 2.0 * std::numbers::pi;
     }
     return r;
 }

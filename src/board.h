@@ -2,6 +2,7 @@
 #define THINKORA_SRC_BOARD_H
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <map>
 #include <mutex>
@@ -24,6 +25,7 @@ public:
     ~Board();
     bool check_modified();
     void redraw(bool pass_on);
+    bool is_drawing();
     void apply_ocr(const std::list<const Sketch*>& sources, int zoom,
         const std::list<Shape*>& results);
 
@@ -60,7 +62,7 @@ private:
     Point mouse_position_;
     Point mouse_pre_pad_;
     std::stack<Point> zoom_lag_;
-    int mouse_button_;
+    std::atomic<int> mouse_button_;
     Ocr ocr_;
     Glib::Dispatcher queue_draw_;
     Bar& bar_;

@@ -75,6 +75,11 @@ void Board::redraw(bool pass_on)
     queue_draw();
 }
 
+bool Board::is_drawing()
+{
+    return mouse_button_ == 1;
+}
+
 void Board::apply_ocr(const std::list<const Sketch*>& sources, int zoom,
     const std::list<Shape*>& results)
 {
@@ -432,7 +437,6 @@ void Board::on_open()
             modified_ = false;
             shapes_lock_.unlock();
             redraw(true);
-            // TODO Pass sketches to ocr
         }
         else
         {
