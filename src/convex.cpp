@@ -16,7 +16,7 @@ Convex::Convex(const jsonio::json& json)
     };
     auto convex = json["convex"];
     const jsonio::json* value;
-    value = convex.get_value("b_a");
+    value = convex.at("b_a");
     if (value)
     {
         b_a_b_ = true;
@@ -28,7 +28,7 @@ Convex::Convex(const jsonio::json& json)
     {
         b_a_b_ = false;
     }
-    value = convex.get_value("e_a");
+    value = convex.at("e_a");
     if (value)
     {
         e_a_b_ = true;
@@ -40,7 +40,7 @@ Convex::Convex(const jsonio::json& json)
     {
         e_a_b_ = false;
     }
-    value = convex.get_value("d_a");
+    value = convex.at("d_a");
     if (value)
     {
         d_a_b_ = true;
