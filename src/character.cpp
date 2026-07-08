@@ -1,11 +1,270 @@
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <limits>
+#include <numbers>
+#include <utility>
+
 #include "character.h"
 
-Character::Character(const std::string& name, const jsonio::json& character)
-    : name_{ name }
+namespace
 {
-    for (const auto& convex : character.get_array())
+constexpr double minimum_dimension = 1e-6;
+constexpr double rotation_consistency_slack = std::numbers::pi / 36.0;
+constexpr double rotation_consistency_unit = std::numbers::pi / 4.0;
+constexpr double inverted_match_penalty = 0.2;
+constexpr std::size_t max_match_states = 32;
+
+struct PartMatch
+{
+    double diff = std::numeric_limits<double>::max();
+    double shape_diff = std::numeric_limits<double>::max();
+    double rotation = 0.0;
+};
+
+struct MatchState
+{
+    std::list<std::size_t> deficients;
+    std::vector<double> rotations;
+    std::vector<CharacterPartMatch> parts;
+    double diff = 0.0;
+};
+
+void include_frame(Rectangle& destination, const Rectangle& source)
+{
+    destination[0][0] = std::min(destination[0][0], source[0][0]);
+    destination[0][1] = std::min(destination[0][1], source[0][1]);
+    destination[1][0] = std::max(destination[1][0], source[1][0]);
+    destination[1][1] = std::max(destination[1][1], source[1][1]);
+}
+
+double width(const Rectangle& frame)
+{
+    return frame[1][0] - frame[0][0];
+}
+
+double height(const Rectangle& frame)
+{
+    return frame[1][1] - frame[0][1];
+}
+
+Point center(const Rectangle& frame)
+{
+    return
     {
-        convexes_.emplace_back(convex);
+        (frame[0][0] + frame[1][0]) / 2.0,
+        (frame[0][1] + frame[1][1]) / 2.0,
+    };
+}
+
+double dot(const Point& first, const Point& second)
+{
+    return first[0] * second[0] + first[1] * second[1];
+}
+
+Rectangle normalize_frame(const Rectangle& frame, const Rectangle& bounds)
+{
+    auto w = width(bounds);
+    auto h = height(bounds);
+    if (std::abs(w) < minimum_dimension ||
+        std::abs(h) < minimum_dimension)
+    {
+        return {{ { 0.0, 0.0 }, { 1.0, 1.0 } }};
+    }
+    return
+    {{
+        {
+            (frame[0][0] - bounds[0][0]) / w,
+            (frame[0][1] - bounds[0][1]) / h,
+        },
+        {
+            (frame[1][0] - bounds[0][0]) / w,
+            (frame[1][1] - bounds[0][1]) / h,
+        },
+    }};
+}
+
+Rectangle project_frame(const Rectangle& frame, double rotation)
+{
+    const Point advance { std::cos(rotation), std::sin(rotation) };
+    const Point height_axis { -std::sin(rotation), std::cos(rotation) };
+    Rectangle projected = empty_frame();
+    std::array<Point, 4> corners
+    {{
+        frame[0],
+        { frame[1][0], frame[0][1] },
+        frame[1],
+        { frame[0][0], frame[1][1] },
+    }};
+    for (const auto& corner : corners)
+    {
+        Point point { dot(corner, advance), dot(corner, height_axis) };
+        include_frame(projected, {{ point, point }});
+    }
+    return projected;
+}
+
+double rectangle_score(const Rectangle& expected, const Rectangle& observed)
+{
+    auto expected_center = center(expected);
+    auto observed_center = center(observed);
+    double center_score = get_distance(expected_center, observed_center) /
+        std::sqrt(2.0);
+    double expected_width = std::max(width(expected), 0.05);
+    double expected_height = std::max(height(expected), 0.05);
+    double observed_width = std::max(width(observed), 0.05);
+    double observed_height = std::max(height(observed), 0.05);
+    double size_score =
+        std::abs(std::log(observed_width / expected_width)) +
+        std::abs(std::log(observed_height / expected_height));
+    return center_score * 0.7 + size_score * 0.15;
+}
+
+double average_rotation(const std::vector<double>& rotations)
+{
+    if (rotations.empty())
+    {
+        return 0.0;
+    }
+
+    double rotation_x = 0.0;
+    double rotation_y = 0.0;
+    for (double rotation : rotations)
+    {
+        rotation_x += std::cos(rotation);
+        rotation_y += std::sin(rotation);
+    }
+    return std::atan2(rotation_y, rotation_x);
+}
+
+double rotation_consistency_score(const std::vector<double>& rotations)
+{
+    if (rotations.size() < 2)
+    {
+        return 0.0;
+    }
+
+    double average = average_rotation(rotations);
+    double diff = 0.0;
+    for (double rotation : rotations)
+    {
+        auto delta = std::abs(get_rotation(average, rotation));
+        diff += std::max(0.0, delta - rotation_consistency_slack) /
+            rotation_consistency_unit;
+    }
+    return diff / rotations.size();
+}
+
+PartMatch convex_score(const Convex& expected, const Convex& observed)
+{
+    auto direct = expected.compare_best_rotation(observed);
+    Convex inverted = observed;
+    inverted.invert();
+    auto inverted_score = expected.compare_best_rotation(inverted);
+    inverted_score.diff += inverted_match_penalty;
+    if (inverted_score.diff < direct.diff)
+    {
+        return
+        {
+            .diff = inverted_score.diff,
+            .shape_diff = inverted_score.diff,
+            .rotation = inverted_score.rotation,
+        };
+    }
+    return
+    {
+        .diff = direct.diff,
+        .shape_diff = direct.diff,
+        .rotation = direct.rotation,
+    };
+}
+
+PartMatch part_score(const Character& character, std::size_t index,
+    const Convex& observed, const Rectangle& candidate_frame)
+{
+    const auto& expected = character.get_convexes()[index];
+    auto shape_score = convex_score(expected, observed);
+    if (shape_score.diff > 0.9)
+    {
+        return shape_score;
+    }
+    auto expected_frame = normalize_frame(
+        expected.get_frame(), character.get_frame());
+    auto projected_candidate =
+        project_frame(candidate_frame, shape_score.rotation);
+    auto projected_observed =
+        project_frame(observed.get_frame(), shape_score.rotation);
+    auto observed_frame =
+        normalize_frame(projected_observed, projected_candidate);
+    double position_score = rectangle_score(expected_frame, observed_frame);
+    return
+    {
+        .diff = shape_score.diff * 0.6 + position_score * 0.4,
+        .shape_diff = shape_score.diff,
+        .rotation = shape_score.rotation,
+    };
+}
+
+double stored_part_score(const Character& character,
+    const CharacterPartMatch& part, const Rectangle& candidate_frame)
+{
+    if (!part.matched)
+    {
+        return part.fault_diff;
+    }
+
+    const auto& expected = character.get_convexes()[part.index];
+    auto expected_frame = normalize_frame(
+        expected.get_frame(), character.get_frame());
+    auto projected_candidate =
+        project_frame(candidate_frame, part.rotation);
+    auto projected_observed =
+        project_frame(part.observed.get_frame(), part.rotation);
+    auto observed_frame =
+        normalize_frame(projected_observed, projected_candidate);
+    double position_score = rectangle_score(expected_frame, observed_frame);
+    return part.shape_diff * 0.6 + position_score * 0.4;
+}
+
+double parts_score_sum(const Character& character,
+    const std::vector<CharacterPartMatch>& parts,
+    const Rectangle& candidate_frame)
+{
+    double score = 0.0;
+    for (const auto& part : parts)
+    {
+        score += stored_part_score(character, part, candidate_frame);
+    }
+    return score;
+}
+
+double state_score(const MatchState& state)
+{
+    return state.diff + rotation_consistency_score(state.rotations);
+}
+
+void prune_states(std::vector<MatchState>& states)
+{
+    std::stable_sort(states.begin(), states.end(),
+        [](const MatchState& first, const MatchState& second)
+        {
+            return state_score(first) < state_score(second);
+        });
+    if (states.size() > max_match_states)
+    {
+        states.resize(max_match_states);
+    }
+}
+}
+
+Character::Character(std::string name, std::vector<Convex> convexes)
+    : name_{ std::move(name) }
+    , convexes_{ std::move(convexes) }
+    , frame_{ empty_frame() }
+{
+    for (const auto& convex : convexes_)
+    {
+        include_frame(frame_, convex.get_frame());
     }
 }
 
@@ -23,159 +282,127 @@ const std::vector<Convex>& Character::get_convexes() const
     return convexes_;
 }
 
-/*
-
-double Pattern::match(const std::vector<Convex>& convexes) const
+const Rectangle& Character::get_frame() const
 {
-    if (convexes_.size() != convexes.size())
+    return frame_;
+}
+
+std::vector<CharacterMatch> Character::match(
+    const std::list<std::size_t>& deficients,
+    const std::vector<double>& rotations,
+    const std::vector<Convex>& observed,
+    const Rectangle& candidate_frame, double match_threshold,
+    double fault_threshold, double fault_diameter,
+    std::vector<CharacterPartMatch> initial_parts) const
+{
+    std::vector<MatchState> states
+    {{
+        .deficients = deficients,
+        .rotations = rotations,
+        .parts = std::move(initial_parts),
+        .diff = 0.0,
+    }};
+    states.front().diff =
+        parts_score_sum(*this, states.front().parts, candidate_frame);
+
+    for (const auto& convex : observed)
     {
-        return 1.0;
-    }
-    double total_similarity = 0;
-    for (std::size_t i = 0; i < convexes_.size(); ++i)
-    {
-        auto similarity = convexes_[i].compare(convexes[i]);
-        if (similarity > 0.6)
+        std::vector<MatchState> next_states;
+        for (const auto& state : states)
         {
-            total_similarity += similarity;
-        }
-        else
-        {
-            return 0.0;
-        }
-    }
-    return total_similarity / convexes_.size();
-}
-
-Pattern::Pattern(const std::string& name, const jsonio::json& pattern)
-    : name_{ name }
-    , frame_{ empty_frame() }
-{
-    for (const auto& json_point: pattern.get_array())
-    {
-        points_.push_back(
-        {
-            json_point[0].get_double(),
-            json_point[1].get_double(),
-        });
-        extend_frame(frame_, points_.back());
-    }
-}
-
-Pattern::~Pattern()
-{
-}
-
-void Pattern::add_character(const Character& character, std::size_t index)
-{
-    characters_.emplace_back(character, index);
-}
-
-const std::string& Pattern::get_name() const
-{
-    return name_;
-}
-
-const std::vector<std::pair<const Character&, std::size_t>>&
-    Pattern::get_characters() const
-{
-    return characters_;
-}
-
-double Pattern::match(
-    const std::vector<Point>& points, const Rectangle& frame) const
-{
-    double total_dist = 0;
-    if (points_.size() == 1)
-    {
-        if (points.size() != 1)
-        {
-            total_dist = 1.0;
-        }
-    }
-    else if (points.size() ==1)
-    {
-        total_dist = 1.0;
-    }
-    else
-    {
-        double ratio = 
-            (frame_[1][0] - frame_[0][0]) / (frame_[1][1] - frame_[0][1]) *
-            (frame[1][1] - frame[0][1]) / (frame[1][0] - frame[0][0]);
-        if (ratio < 4 && ratio > 0.25)
-        {
-            std::vector<Point> pts;
-            for (const auto& point : points)
+            bool matched = false;
+            for (auto index : state.deficients)
             {
-                pts.push_back(
+                auto match = part_score(*this, index, convex, candidate_frame);
+                if (match.diff > match_threshold)
                 {
-                    (point[0] - frame[0][0]) * (frame_[1][0] - frame_[0][0]) /
-                        (frame[1][0] - frame[0][0]) + frame_[0][0],
-                    (point[1] - frame[0][1]) * (frame_[1][1] - frame_[0][1]) /
-                        (frame[1][1] - frame[0][1]) + frame_[0][1],
+                    continue;
+                }
+
+                MatchState next = state;
+                next.rotations.emplace_back(match.rotation);
+                next.parts.emplace_back(CharacterPartMatch
+                {
+                    .matched = true,
+                    .index = index,
+                    .observed = convex,
+                    .shape_diff = match.shape_diff,
+                    .rotation = match.rotation,
+                    .fault_diff = 0.0,
                 });
-            }
-            // TODO if path is polygon, arrange pts for best match
-            auto s_it = pts.begin();
-            auto p_it = points_.begin();
-            auto p_it_next = std::next(p_it);
-            for (;;)
-            {
-                auto p_angle = get_angle({
-                    (*p_it_next)[0] - (*p_it)[0],
-                    (*p_it_next)[1] - (*p_it)[1]});
-                auto p_it_next_next = std::next(p_it_next);
-                auto p_angle_next = p_angle;
-                if (p_it_next_next != points_.end())
+                auto it = std::find(
+                    next.deficients.begin(), next.deficients.end(), index);
+                if (it != next.deficients.end())
                 {
-                    p_angle_next = get_angle({
-                        (*p_it_next_next)[0] - (*p_it_next)[0],
-                        (*p_it_next_next)[1] - (*p_it_next)[1]});
+                    next.deficients.erase(it);
                 }
-                Point p_v_start = *s_it, p_v_end =
-                {
-                    (*p_it_next)[0] - (*p_it)[0] + (*s_it)[0],
-                    (*p_it_next)[1] - (*p_it)[1] + (*s_it)[1],
-                };
-                total_dist += get_distance(*p_it, *s_it);
-                auto s_it_next = std::next(s_it);
-                for (; s_it_next != pts.end(); ++s_it_next)
-                {
-                    auto s_angle = get_angle({
-                        (*s_it_next)[0] - (*s_it)[0],
-                        (*s_it_next)[1] - (*s_it)[1]});
-                    if (std::abs(get_rotation(s_angle, p_angle)) >
-                        std::abs(get_rotation(s_angle, p_angle_next)))
-                    {
-                        break;
-                    }
-                    total_dist += get_distance(*s_it_next,
-                        get_nearst(*s_it_next, { p_v_start, p_v_end }));
-                    s_it = s_it_next;
-                }
-                total_dist += get_distance(*p_it_next, *s_it);
-                if (p_it_next_next == points_.end())
-                {
-                    break;
-                }
-                p_it = p_it_next;
-                p_it_next = p_it_next_next;
+                next.diff =
+                    parts_score_sum(*this, next.parts, candidate_frame);
+                next_states.emplace_back(std::move(next));
+                matched = true;
             }
-            auto s_it_next = std::next(s_it);
-            for (; s_it_next != pts.end(); ++s_it_next)
-            {
-                total_dist += get_distance(*s_it, *s_it_next);
-                s_it = s_it_next;
-            }
-            total_dist /= points_.size();
-            total_dist /= get_distance(frame_[0], frame_[1]);
-        }
-        else
-        {
-            total_dist = 1.0;
-        }
-    }
-    return total_dist;
-}
 
-*/
+            if (!matched)
+            {
+                auto fault =
+                    get_distance(convex.get_frame()[0],
+                        convex.get_frame()[1]) /
+                    std::max(fault_diameter, minimum_dimension);
+                if (fault < fault_threshold)
+                {
+                    MatchState next = state;
+                    next.parts.emplace_back(CharacterPartMatch
+                    {
+                        .matched = false,
+                        .index = 0,
+                        .observed = convex,
+                        .shape_diff = 0.0,
+                        .rotation = 0.0,
+                        .fault_diff = fault,
+                    });
+                    next.diff =
+                        parts_score_sum(*this, next.parts, candidate_frame);
+                    next_states.emplace_back(std::move(next));
+                }
+            }
+        }
+
+        states = std::move(next_states);
+        if (states.empty())
+        {
+            return {};
+        }
+        prune_states(states);
+    }
+
+    std::vector<CharacterMatch> matches;
+    matches.reserve(states.size());
+    for (auto& state : states)
+    {
+        std::size_t score_count = state.parts.size();
+        double score_sum =
+            parts_score_sum(*this, state.parts, candidate_frame);
+        double diff =
+            score_sum / std::max<std::size_t>(score_count, 1);
+        if (state.deficients.empty())
+        {
+            diff += rotation_consistency_score(state.rotations);
+        }
+        matches.emplace_back(CharacterMatch
+        {
+            .diff = diff,
+            .score_sum = score_sum,
+            .score_count = score_count,
+            .rotation = average_rotation(state.rotations),
+            .deficients = std::move(state.deficients),
+            .rotations = std::move(state.rotations),
+            .parts = std::move(state.parts),
+        });
+    }
+    std::stable_sort(matches.begin(), matches.end(),
+        [](const CharacterMatch& first, const CharacterMatch& second)
+        {
+            return first.diff < second.diff;
+        });
+    return matches;
+}

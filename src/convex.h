@@ -4,39 +4,51 @@
 #include <array>
 #include <vector>
 
-#include "json.h"
-
 #include "toolbox.h"
 
-class Convex
-{
+struct ConvexData {
+  Rectangle frame;
+  double b_a;
+  double b_x;
+  double b_y;
+  double e_a;
+  double e_x;
+  double e_y;
+  double d_a;
+  int n_b;
+  int n_e;
+};
+
+struct ConvexMatch {
+  double diff;
+  double rotation;
+};
+
+class Convex {
 public:
-    Convex(const jsonio::json& json);
-    Convex(const std::vector<Point>& points, double rotation);
-    ~Convex();
-    void invert();
-    double compare(const Convex& convex) const;
-    const Rectangle& get_frame() const;
+  Convex(const ConvexData &data);
+  Convex(const std::vector<Point> &points);
+  ~Convex();
+  void invert();
+  double compare(const Convex &convex) const;
+  double compare(const Convex &convex, double rotation) const;
+  ConvexMatch compare_best_rotation(const Convex &convex) const;
+  const Rectangle &get_frame() const;
 
 public:
-    static std::vector<Convex> get_convexes(const std::vector<Point>& points);
+  static std::vector<Convex> get_convexes(const std::vector<Point> &points);
 
 private:
-    Rectangle frame_;
-    bool b_a_b_;
-    double b_a_;
-    double b_x_;
-    double b_y_;
-    bool e_a_b_;
-    double e_a_;
-    double e_x_;
-    double e_y_;
-    bool d_a_b_;
-    double d_a_;
-    double d_l_;
-    double d_r_;
-    int n_b_;
-    int n_e_;
+  Rectangle frame_;
+  double b_a_;
+  double b_x_;
+  double b_y_;
+  double e_a_;
+  double e_x_;
+  double e_y_;
+  double d_a_;
+  int n_b_;
+  int n_e_;
 };
 
 #endif // THINKORA_SRC_CONVEX_H

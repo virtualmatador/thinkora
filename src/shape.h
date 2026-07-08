@@ -20,6 +20,7 @@ public:
         WIRE,
         CIRCLE,
         TEXT,
+        RENDER,
     };
     enum class Style
     {

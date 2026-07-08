@@ -30,12 +30,13 @@ public:
         const std::list<Shape*>& results);
 
 private:
-    bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override;
-    bool on_button_press_event(GdkEventButton* button_event) override;
-    bool on_motion_notify_event(GdkEventMotion* motion_event) override;
-    bool on_button_release_event(GdkEventButton* release_event) override;
-    bool on_scroll_event(GdkEventScroll *scroll_event) override;
-    bool on_enter_notify_event(GdkEventCrossing* crossing_event) override;
+    void on_draw(const Cairo::RefPtr<Cairo::Context>& cr, int width,
+        int height);
+    void on_button_press(unsigned int button, double x, double y);
+    void on_motion(double x, double y);
+    void on_button_release(unsigned int button, double x, double y);
+    bool on_scroll(double dx, double dy);
+    void on_enter(double x, double y);
     void on_save();
     void on_open();
     void on_origin();
@@ -46,7 +47,7 @@ private:
     void remove_reference(const int& zoom, const Shape* shape);
     void clamp_position();
     bool check_zoom(const int& zoom, const Point& center) const;
-    std::string choose_file(Gtk::FileChooserAction action) const;
+    std::string choose_file(Gtk::FileChooser::Action action) const;
     Point get_input_position(const Point& point) const;
     void finish_ocr();
 
@@ -60,6 +61,7 @@ private:
     mutable std::mutex shapes_lock_;
     Point center_pre_pad_;
     Point mouse_position_;
+    Point pointer_position_;
     Point mouse_pre_pad_;
     std::stack<Point> zoom_lag_;
     std::atomic<int> mouse_button_;

@@ -4,6 +4,7 @@
 #include "board.h"
 #include "circle.h"
 #include "dot.h"
+#include "render.h"
 #include "sketch.h"
 #include "text.h"
 #include "wire.h"
@@ -29,6 +30,9 @@ Shape* Shape::create_shape(const Shape::Type& type)
         break;
     case Shape::Type::TEXT:
         shape = new Text;
+        break;
+    case Shape::Type::RENDER:
+        shape = new Render;
         break;
     default:
         shape = nullptr;
@@ -90,7 +94,7 @@ void Shape::draw(const Cairo::RefPtr<Cairo::Context>& cr,
         color_.get_blue(), color_.get_alpha());
     cr->set_line_width(width_);
     cr->set_dash(Board::dashes_[width_ - 1][int(style_)], 0.0);
-    cr->set_line_cap(Cairo::LineCap::LINE_CAP_BUTT);
+    cr->set_line_cap(Cairo::Context::LineCap::BUTT);
     draw_details(cr, zoom_delta, pad);
 }
 

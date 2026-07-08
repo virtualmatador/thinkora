@@ -1,0 +1,9 @@
+[
+    {
+        "type": "arc",
+        "center": [0.5, 0.5],
+        "radius": 0.45,
+        "start_angle": 0.0,
+        "end_angle": 360.0
+    }
+]

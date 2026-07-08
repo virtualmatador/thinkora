@@ -11,7 +11,9 @@ class Window: public Gtk::Window
 public:
     Window();
     ~Window();
-    bool on_delete(GdkEventAny* any_event);
+
+protected:
+    bool on_close_request() override;
 
 private:
     Gtk::Box box_;

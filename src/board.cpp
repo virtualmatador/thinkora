@@ -7,6 +7,29 @@
 
 #include "board.h"
 
+namespace
+{
+int run_dialog(Gtk::Dialog& dialog)
+{
+    int response = Gtk::ResponseType::NONE;
+    auto loop = Glib::MainLoop::create();
+    dialog.signal_response().connect([&](int id)
+    {
+        response = id;
+        dialog.set_visible(false);
+        loop->quit();
+    });
+    dialog.present();
+    loop->run();
+    return response;
+}
+
+Gtk::Window& parent_window(Gtk::Widget& widget)
+{
+    return *dynamic_cast<Gtk::Window*>(widget.get_root());
+}
+}
+
 std::vector<std::vector<std::vector<double>>> Board::dashes_;
 
 Board::Board(Bar& bar)
@@ -16,20 +39,50 @@ Board::Board(Bar& bar)
     , sketch_{ nullptr }
     , center_pre_pad_{ 0.0, 0.0 }
     , mouse_position_{ 0.0, 0.0 }
+    , pointer_position_{ 0.0, 0.0 }
     , mouse_pre_pad_{ 0.0, 0.0 }
     , mouse_button_{ 0 }
     , ocr_{ *this }
     , bar_{ bar }
 {
-    add_events(
-        Gdk::EventMask::BUTTON_PRESS_MASK |
-        Gdk::EventMask::BUTTON_RELEASE_MASK |
-        Gdk::EventMask::SCROLL_MASK |
-        Gdk::EventMask::BUTTON1_MOTION_MASK |
-        Gdk::EventMask::BUTTON2_MOTION_MASK |
-        Gdk::EventMask::BUTTON3_MOTION_MASK |
-        Gdk::EventMask::POINTER_MOTION_MASK |
-        Gdk::EventMask::ENTER_NOTIFY_MASK);
+    set_draw_func(sigc::mem_fun(*this, &Board::on_draw));
+
+    auto primary_click = Gtk::GestureClick::create();
+    primary_click->set_button(1);
+    primary_click->signal_pressed().connect([this](int, double x, double y)
+    {
+        on_button_press(1, x, y);
+    });
+    primary_click->signal_released().connect([this](int, double x, double y)
+    {
+        on_button_release(1, x, y);
+    });
+    add_controller(primary_click);
+
+    auto middle_click = Gtk::GestureClick::create();
+    middle_click->set_button(2);
+    middle_click->signal_pressed().connect([this](int, double x, double y)
+    {
+        on_button_press(2, x, y);
+    });
+    middle_click->signal_released().connect([this](int, double x, double y)
+    {
+        on_button_release(2, x, y);
+    });
+    add_controller(middle_click);
+
+    auto motion = Gtk::EventControllerMotion::create();
+    motion->signal_enter().connect(sigc::mem_fun(*this, &Board::on_enter));
+    motion->signal_motion().connect(sigc::mem_fun(*this, &Board::on_motion));
+    add_controller(motion);
+
+    auto scroll = Gtk::EventControllerScroll::create();
+    scroll->set_flags(Gtk::EventControllerScroll::Flags::VERTICAL |
+        Gtk::EventControllerScroll::Flags::DISCRETE);
+    scroll->signal_scroll().connect(sigc::mem_fun(*this, &Board::on_scroll),
+        false);
+    add_controller(scroll);
+
     for (std::size_t i = 1; i <= width_limit_; ++i)
     {
         dashes_.emplace_back(std::vector<std::vector<double>>(
@@ -40,8 +93,9 @@ Board::Board(Bar& bar)
             {1.0 * i, 4.0 * i},
         }));
     }
-    queue_draw_.connect(sigc::mem_fun(*this, &Widget::queue_draw));
+    queue_draw_.connect(sigc::mem_fun(*this, &Gtk::Widget::queue_draw));
     Ocr::read_characters();
+    Ocr::read_shapes();
 }
 
 Board::~Board()
@@ -54,11 +108,10 @@ bool Board::check_modified()
 {
     if (modified_)
     {
-        Gtk::MessageDialog error_message(*(Gtk::Window*)get_toplevel(),
+        Gtk::MessageDialog error_message(parent_window(*this),
             "You have unsaved changes. Do you want to save them?",
-            false, Gtk::MessageType::MESSAGE_WARNING,
-            Gtk::ButtonsType::BUTTONS_YES_NO, true);
-        if (error_message.run() == Gtk::ResponseType::RESPONSE_YES)
+            false, Gtk::MessageType::WARNING, Gtk::ButtonsType::YES_NO, true);
+        if (run_dialog(error_message) == Gtk::ResponseType::YES)
         {
             return true;
         }
@@ -99,21 +152,24 @@ void Board::apply_ocr(const std::list<const Sketch*>& sources, int zoom,
 
 void Board::clear_data()
 {
+    std::set<const Shape*> shapes;
     shapes_lock_.lock();
     for (auto& [zoom, plane]: shapes_)
     {
-        for (auto& [position, shapes]: plane)
+        for (auto& [position, region_shapes]: plane)
         {
-            while (!shapes.empty())
+            for (auto shape: region_shapes)
             {
-                auto shape = *shapes.begin();
-                remove_reference(zoom, shape);
-                delete shape;
+                shapes.insert(shape);
             }
         }
     }
     shapes_.clear();
     shapes_lock_.unlock();
+    for (auto shape: shapes)
+    {
+        delete shape;
+    }
 }
 
 void Board::add_reference(const int& zoom, const Shape* shape)
@@ -151,7 +207,7 @@ void Board::remove_reference(const int& zoom, const Shape* shape)
     }
 }
 
-bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
+void Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr, int, int)
 {
     cr->set_source_rgb(0.0, 0.0, 0.0);
     cr->paint();
@@ -204,14 +260,15 @@ bool Board::on_draw(const Cairo::RefPtr<Cairo::Context>& cr)
     {
         sketch_->draw(cr, 0, area[0]);
     }
-    return true;
 }
 
-bool Board::on_button_press_event(GdkEventButton* button_event)
+void Board::on_button_press(unsigned int button, double x, double y)
 {
+    pointer_position_ = { x, y };
+    mouse_position_ = get_input_position(pointer_position_);
     if (mouse_button_ == 0)
     {
-        if (button_event->button == 1)
+        if (button == 1)
         {
             mouse_button_ = 1;
             bar_.set_sensitive(false);
@@ -221,51 +278,48 @@ bool Board::on_button_press_event(GdkEventButton* button_event)
             sketch_->add_point(mouse_position_);
             redraw(true);
         }
-        else if (button_event->button == 2)
+        else if (button == 2)
         {
             mouse_button_ = 2;
             bar_.set_sensitive(false);
             center_pre_pad_ = center_;
-            mouse_pre_pad_ = { button_event->x, button_event->y };
+            mouse_pre_pad_ = pointer_position_;
             redraw(true);
         }
-        return true;
     }
-    return false;
 }
 
-bool Board::on_motion_notify_event(GdkEventMotion* motion_event)
+void Board::on_motion(double x, double y)
 {
+    pointer_position_ = { x, y };
     if (mouse_button_ == 1)
     {
-        mouse_position_ = get_input_position(
-            { motion_event->x, motion_event->y });
+        mouse_position_ = get_input_position(pointer_position_);
         sketch_->add_point(mouse_position_);
         redraw(true);
     }
     else if (mouse_button_ == 2)
     {
         center_[0] = center_pre_pad_[0] + mouse_pre_pad_[0] -
-            motion_event->x;
+            pointer_position_[0];
         center_[1] = center_pre_pad_[1] + mouse_pre_pad_[1] -
-            motion_event->y;
+            pointer_position_[1];
         clamp_position();
-        mouse_position_ = get_input_position(
-            { motion_event->x, motion_event->y });
+        mouse_position_ = get_input_position(pointer_position_);
         redraw(true);
     }
     else
     {
-        mouse_position_ = get_input_position(
-            { motion_event->x, motion_event->y });
+        mouse_position_ = get_input_position(pointer_position_);
         bar_.redraw(false);
     }
-    return true;
 }
 
-bool Board::on_button_release_event(GdkEventButton* release_event)
+void Board::on_button_release(unsigned int button, double x, double y)
 {
-    if (release_event->button == 1)
+    pointer_position_ = { x, y };
+    mouse_position_ = get_input_position(pointer_position_);
+    if (button == 1)
     {
         if (mouse_button_ == 1)
         {
@@ -280,7 +334,7 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
             bar_.set_sensitive(true);
         }
     }
-    else if (release_event->button == 2)
+    else if (button == 2)
     {
         if (mouse_button_ == 2)
         {
@@ -289,18 +343,16 @@ bool Board::on_button_release_event(GdkEventButton* release_event)
             bar_.set_sensitive(true);
         }
     }
-    return true;
 }
 
-bool Board::on_scroll_event(GdkEventScroll* scroll_event)
+bool Board::on_scroll(double, double dy)
 {
     if (mouse_button_ == 0)
     {
         int zoom;
         Point center;
-        switch (scroll_event->direction)
+        if (dy < 0.0)
         {
-        case GdkScrollDirection::GDK_SCROLL_UP:
             zoom = zoom_ + 1;
             center[0] = center_[0] + mouse_position_[0];
             center[1] = center_[1] + mouse_position_[1];
@@ -317,13 +369,13 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
                 {
                     zoom_lag_.pop();
                 }
-                mouse_position_ =
-                    get_input_position({ scroll_event->x, scroll_event->y });
+                mouse_position_ = get_input_position(pointer_position_);
                 redraw(true);
                 return true;
             }
-            break;
-        case GdkScrollDirection::GDK_SCROLL_DOWN:
+        }
+        else if (dy > 0.0)
+        {
             zoom = zoom_ - 1;
             center[0] = center_[0] - mouse_position_[0] / 2.0;
             center[1] = center_[1] - mouse_position_[1] / 2.0;
@@ -332,8 +384,7 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
                 auto pre_center = center_;
                 zoom_ = zoom;
                 center_ = center;
-                mouse_position_ = get_input_position(
-                    { scroll_event->x, scroll_event->y });
+                mouse_position_ = get_input_position(pointer_position_);
                 zoom_lag_.push(
                 {
                     pre_center[0] - (center_[0] + mouse_position_[0]),
@@ -342,25 +393,23 @@ bool Board::on_scroll_event(GdkEventScroll* scroll_event)
                 redraw(true);
                 return true;
             }
-            break;
         }
     }
 	return false;
 }
 
-bool Board::on_enter_notify_event(GdkEventCrossing* crossing_event)
+void Board::on_enter(double x, double y)
 {
-    mouse_position_ = get_input_position(
-        { crossing_event->x, crossing_event->y });
+    pointer_position_ = { x, y };
+    mouse_position_ = get_input_position(pointer_position_);
     bar_.redraw(false);
-    return true;
 }
 
 void Board::on_save()
 {
     finish_ocr();
     auto file_name =
-        choose_file(Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SAVE);
+        choose_file(Gtk::FileChooser::Action::SAVE);
     if (!file_name.empty())
     {
         std::ofstream file(file_name);
@@ -390,10 +439,10 @@ void Board::on_save()
         }
         else
         {
-            Gtk::MessageDialog error_message(*(Gtk::Window*)get_toplevel(),
-                "Failed to save file.", false, Gtk::MessageType::MESSAGE_ERROR,
-                Gtk::ButtonsType::BUTTONS_OK, true);
-            error_message.run();
+            Gtk::MessageDialog error_message(parent_window(*this),
+                "Failed to save file.", false, Gtk::MessageType::ERROR,
+                Gtk::ButtonsType::OK, true);
+            run_dialog(error_message);
         }
     }
 }
@@ -406,7 +455,7 @@ void Board::on_open()
         return;
     }
     auto file_name =
-        choose_file(Gtk::FileChooserAction::FILE_CHOOSER_ACTION_OPEN);
+        choose_file(Gtk::FileChooser::Action::OPEN);
     if (!file_name.empty())
     {
         std::ifstream file(file_name);
@@ -440,37 +489,44 @@ void Board::on_open()
         }
         else
         {
-            Gtk::MessageDialog error_message(*(Gtk::Window*)get_toplevel(),
-                "Failed to open file.", false, Gtk::MessageType::MESSAGE_ERROR,
-                Gtk::ButtonsType::BUTTONS_OK, true);
-            error_message.run();
+            Gtk::MessageDialog error_message(parent_window(*this),
+                "Failed to open file.", false, Gtk::MessageType::ERROR,
+                Gtk::ButtonsType::OK, true);
+            run_dialog(error_message);
         }
     }
 }
 
-std::string Board::choose_file(Gtk::FileChooserAction action) const
+std::string Board::choose_file(Gtk::FileChooser::Action action) const
 {
-    Gtk::FileChooserDialog file_chooser(*(Gtk::Window*)get_toplevel(),
-        "Thinkora", action);
+    Gtk::FileChooserDialog file_chooser(parent_window(
+        const_cast<Board&>(*this)), "Thinkora", action);
     const char* select_button;
     switch (action)
     {
-    case Gtk::FileChooserAction::FILE_CHOOSER_ACTION_OPEN:
+    case Gtk::FileChooser::Action::OPEN:
         select_button = "Open";
         break;
-    case Gtk::FileChooserAction::FILE_CHOOSER_ACTION_SAVE:
+    case Gtk::FileChooser::Action::SAVE:
         select_button = "Save";
         break;
+    default:
+        select_button = "Select";
+        break;
     }
-    file_chooser.add_button(select_button, Gtk::RESPONSE_OK);
-    file_chooser.add_button("Cancel", Gtk::RESPONSE_CANCEL);
+    file_chooser.add_button(select_button, Gtk::ResponseType::OK);
+    file_chooser.add_button("Cancel", Gtk::ResponseType::CANCEL);
     auto file_filter = Gtk::FileFilter::create();
     file_filter->set_name("Thinkora files");
     file_filter->add_pattern("*.thinkora");
     file_chooser.add_filter(file_filter);
-    if (file_chooser.run() == Gtk::ResponseType::RESPONSE_OK)
+    if (run_dialog(file_chooser) == Gtk::ResponseType::OK)
     {
-        return file_chooser.get_filename();
+        auto file = file_chooser.get_file();
+        if (file)
+        {
+            return file->get_path();
+        }
     }
     return "";
 }
@@ -510,7 +566,7 @@ Point Board::get_input_position(const Point& point) const
 
 void Board::finish_ocr()
 {
-    get_window()->set_cursor(Gdk::Cursor::create(Gdk::CursorType::WATCH));
+    set_cursor("wait");
     ocr_.finish();
-    get_window()->set_cursor();
+    set_cursor();
 }

@@ -26,8 +26,16 @@ void Circle::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
     {
         points.emplace_back(transform(point, zoom_delta, pad));
     }
-    cr->arc(points[0][0], points[0][1], points[1][0] - points[0][0],
-        angle_1_, angle_2_);
+    if (angle_2_ >= angle_1_)
+    {
+        cr->arc(points[0][0], points[0][1], points[1][0] - points[0][0],
+            angle_1_, angle_2_);
+    }
+    else
+    {
+        cr->arc_negative(points[0][0], points[0][1],
+            points[1][0] - points[0][0], angle_1_, angle_2_);
+    }
     cr->stroke();
 }
 

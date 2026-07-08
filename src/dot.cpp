@@ -21,7 +21,7 @@ void Dot::draw_details(const Cairo::RefPtr<Cairo::Context>& cr,
         const int& zoom_delta, const Point& pad) const
 {
     auto point = transform(point_, zoom_delta, pad);
-    cr->set_line_cap(Cairo::LineCap::LINE_CAP_ROUND);
+    cr->set_line_cap(Cairo::Context::LineCap::ROUND);
     cr->move_to(point[0], point[1]);
     cr->line_to(point[0], point[1]);
     cr->stroke();
